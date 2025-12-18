@@ -1,0 +1,5 @@
+{
+  "name": "SaaS Contract & Payment System",
+  "description": "A unified SaaS platform for contract management, signing, and payments with strict role-based access control.",
+  "requestFramePermissions": []
+}
