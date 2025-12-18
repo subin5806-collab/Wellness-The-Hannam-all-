@@ -7,30 +7,82 @@ import { useNavigate } from 'react-router-dom';
 import { 
   LayoutGrid, 
   MessageCircle, 
-  Sparkles, 
+  User, 
   LogOut, 
-  RefreshCw, 
-  CheckCircle,
-  Calendar,
   ChevronRight,
-  Info,
   Clock,
-  User,
-  ExternalLink
+  Globe
 } from 'lucide-react';
 import { SignaturePad } from '../../components/SignaturePad';
+
+type Lang = 'ko' | 'en';
+
+const translations = {
+  ko: {
+    welcome: '님, 반갑습니다',
+    dashboard: '대시보드',
+    careNotes: '케어 노트',
+    concierge: '컨시어지',
+    balance: '멤버십 잔액',
+    deposit: '누적 예치금',
+    used: '누적 차감액',
+    grade: '멤버십 등급',
+    discount: '서비스 할인 적용 중',
+    signTitle: '오늘의 세션 확인 및 서명',
+    awaitingSign: '서명 대기 중',
+    processing: '처리 중...',
+    pay: '세션 확인 및 결제하기',
+    upcoming: '다가오는 예약',
+    noRes: '예약된 일정이 없습니다.',
+    wellnessProfile: '웰니스 프로필',
+    mainGoal: '주요 목표',
+    recommended: '추천 테라피',
+    connect: '전담 컨시어지 연결',
+    history: '최근 이용 내역',
+    latest: '최신 기록',
+    past: '과거 기록',
+    therapistFeedback: '테라피스트 어드바이스'
+  },
+  en: {
+    welcome: 'Welcome, ',
+    dashboard: 'DASHBOARD',
+    careNotes: 'CARE NOTES',
+    concierge: 'CONCIERGE',
+    balance: 'BALANCE',
+    deposit: 'TOTAL DEPOSIT',
+    used: 'TOTAL USED',
+    grade: 'GRADE',
+    discount: 'Discount Applied',
+    signTitle: 'SESSION VERIFICATION',
+    awaitingSign: 'Awaiting Signature',
+    processing: 'Processing...',
+    pay: 'CONFIRM & AUTHORIZE',
+    upcoming: 'UPCOMING',
+    noRes: 'No scheduled sessions.',
+    wellnessProfile: 'WELLNESS PROFILE',
+    mainGoal: 'CORE GOAL',
+    recommended: 'RECOMMENDED',
+    connect: 'Contact Concierge',
+    history: 'HISTORY',
+    latest: 'Latest',
+    past: 'Past',
+    therapistFeedback: 'Therapist Feedback'
+  }
+};
 
 export const MemberPortal: React.FC = () => {
   const [member, setMember] = useState<Member | null>(null);
   const [history, setHistory] = useState<CareRecord[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'notes' | 'ai'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'notes' | 'concierge'>('dashboard');
   const [pendingRecord, setPendingRecord] = useState<CareRecord | null>(null);
   const [signature, setSignature] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [lang, setLang] = useState<Lang>('ko');
   
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser();
+  const t = translations[lang];
 
   useEffect(() => {
     if (!currentUser) {
@@ -51,7 +103,6 @@ export const MemberPortal: React.FC = () => {
       ]);
       setHistory(h);
       setReservations(r);
-      // 서명 대기중인(관리자가 방금 보낸) 최신 기록 확인
       const pending = h.find(rec => rec.status === CareStatus.WAITING_SIGNATURE);
       setPendingRecord(pending || null);
     }
@@ -60,268 +111,230 @@ export const MemberPortal: React.FC = () => {
   const handleSignComplete = async () => {
     if (!pendingRecord || !signature) return;
     setIsProcessing(true);
-    // 실제 차감 로직 실행
     await dbService.signCareRecord(pendingRecord.id, signature);
     setPendingRecord(null);
     setSignature('');
-    await loadMemberData(); // 차감된 잔액 반영을 위해 다시 로드
+    await loadMemberData();
     setIsProcessing(false);
-    alert('오늘의 세션 확인 및 결제 처리가 완료되었습니다.');
   };
 
-  if (!member) return <div className="p-20 text-center animate-pulse font-serif text-gray-400">Opening Your Private Sanctuary...</div>;
+  if (!member) return <div className="min-h-screen flex items-center justify-center font-serif text-gray-300 tracking-widest uppercase">The Hannam...</div>;
 
   return (
-    <div className="min-h-screen bg-[#FBF9F6] font-sans text-gray-900 pb-20">
-      {/* Top Header (Image 1 상단 로고 및 싱크) */}
-      <header className="px-12 py-6 flex justify-between items-center bg-white border-b border-gray-50">
-        <div className="flex items-center gap-4">
-           <div className="w-10 h-10 bg-hannam-green rounded-full flex items-center justify-center text-white text-[8px] font-black uppercase shadow-lg">Logo</div>
-           <div className="flex flex-col">
-              <h1 className="text-lg font-serif font-bold text-[#1A1A1A] tracking-tight">THE HANNAM</h1>
-              <p className="text-[10px] text-gray-400 font-medium">Welcome, <span className="text-hannam-gold font-bold">{member.name} Kim.</span></p>
-           </div>
+    <div className="min-h-screen bg-[#FDFDFD] font-sans text-[#1A1A1A] pb-16">
+      <header className="px-8 py-4 flex justify-between items-center bg-white/95 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-100 shadow-sm">
+        <div className="flex items-center gap-3">
+           <div className="w-8 h-8 bg-hannam-green rounded-full flex items-center justify-center text-white text-[7px] font-black tracking-tighter">HANNAM</div>
+           <h1 className="text-xs font-serif font-bold tracking-[0.2em] text-[#1A1A1A]">THE HANNAM</h1>
         </div>
-        <div className="flex items-center gap-4">
-           <button onClick={loadMemberData} className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-100 rounded-full text-[9px] font-black text-gray-400 uppercase tracking-widest hover:bg-gray-50 transition-all">
-             <RefreshCw className="w-3 h-3" /> Sync Data
-           </button>
-           <button onClick={() => { authService.logout(); navigate('/'); }} className="text-gray-300 hover:text-black">
-             <LogOut className="w-4 h-4" />
+        <div className="flex items-center gap-5">
+           <div className="flex items-center gap-2 border border-gray-100 rounded-full px-3 py-1 bg-gray-50/50">
+              <button onClick={() => setLang('ko')} className={`text-[9px] font-black ${lang === 'ko' ? 'text-hannam-gold' : 'text-gray-300 hover:text-gray-500'}`}>KR</button>
+              <div className="w-[1px] h-2 bg-gray-200" />
+              <button onClick={() => setLang('en')} className={`text-[9px] font-black ${lang === 'en' ? 'text-hannam-gold' : 'text-gray-300 hover:text-gray-500'}`}>EN</button>
+           </div>
+           <span className="text-[10px] font-bold text-gray-500">{lang === 'ko' ? `${member.name}${t.welcome}` : `${t.welcome}${member.name}`}</span>
+           <button onClick={() => { authService.logout(); navigate('/'); }} className="text-gray-300 hover:text-red-400">
+             <LogOut className="w-3.5 h-3.5" />
            </button>
         </div>
       </header>
 
-      {/* Main Hero (Image 1 중앙 타이틀) */}
-      <section className="pt-20 pb-12 text-center">
-         <h2 className="text-[44px] font-serif font-bold tracking-tight text-[#1A362E] mb-2 uppercase">WELLNESS, THE HANNAM</h2>
-         <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-8">PRIVATE WELL-AGING CENTER</p>
-         <p className="text-[13px] font-serif italic text-gray-400">"Balanced Life, Immeasurable Value"</p>
-      </section>
+      <main className="max-w-[1000px] mx-auto px-6 pt-10">
+         <section className="text-center mb-10">
+            <h2 className="text-2xl font-serif font-bold tracking-widest text-[#1A362E] mb-6 uppercase">PRIVATE PORTAL</h2>
+            <div className="flex justify-center gap-10 border-b border-gray-100">
+               {[
+                 { id: 'dashboard', label: t.dashboard, icon: LayoutGrid },
+                 { id: 'notes', label: t.careNotes, icon: MessageCircle },
+                 { id: 'concierge', label: t.concierge, icon: User },
+               ].map(item => (
+                 <button 
+                   key={item.id}
+                   onClick={() => setActiveTab(item.id as any)}
+                   className={`flex items-center gap-2 pb-3 text-[10px] font-black tracking-[0.15em] relative transition-all ${activeTab === item.id ? 'text-[#1A362E]' : 'text-gray-300 hover:text-gray-500'}`}
+                 >
+                   {item.label}
+                   {activeTab === item.id && <div className="absolute bottom-[-1px] left-0 w-full h-[1px] bg-[#1A362E]" />}
+                 </button>
+               ))}
+            </div>
+         </section>
 
-      {/* Navigation Tabs (Image 1 상단 탭) */}
-      <nav className="flex justify-center gap-12 border-b border-gray-100 mb-12 max-w-4xl mx-auto">
-         {[
-           { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
-           { id: 'notes', label: 'Care Notes', icon: MessageCircle },
-           { id: 'ai', label: 'AI Concierge', icon: Sparkles },
-         ].map(item => (
-           <button 
-             key={item.id}
-             onClick={() => setActiveTab(item.id as any)}
-             className={`flex items-center gap-3 pb-5 text-[13px] font-bold tracking-tight relative transition-all ${activeTab === item.id ? 'text-[#1A362E]' : 'text-gray-300 hover:text-gray-500'}`}
-           >
-             <item.icon className={`w-4 h-4 ${activeTab === item.id ? 'text-hannam-gold' : 'text-gray-200'}`} />
-             {item.label}
-             {activeTab === item.id && <div className="absolute bottom-[-1px] left-0 w-full h-[2px] bg-hannam-green" />}
-           </button>
-         ))}
-      </nav>
-
-      <main className="max-w-[1280px] mx-auto px-8">
          {activeTab === 'dashboard' && (
-           <div className="space-y-12 animate-fade-in">
-              {/* Top Section (Image 1 상단 카드 영역) */}
-              <div className="flex items-center gap-3 mb-4">
-                 <div className="bg-gray-100 px-3 py-1 rounded-md flex items-center gap-2">
-                    <RefreshCw className="w-3 h-3 text-gray-400" />
-                    <span className="text-[9px] font-bold text-gray-400">Offline Demo Mode</span>
-                 </div>
-                 <div className="ml-auto text-[10px] font-mono text-gray-300">Member ID: {member.id}</div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-8">
-                 {/* Remaining Membership Limit Card (Image 1 좌측) */}
-                 <div className="bg-[#1A362E] rounded-[16px] p-12 text-white shadow-2xl relative overflow-hidden group h-[340px] flex flex-col justify-between">
-                    <div className="absolute bottom-[-60px] right-[-60px] w-64 h-64 bg-white/5 rounded-full" />
+           <div className="space-y-6 animate-fade-in">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                 <div className="lg:col-span-2 bg-[#1A362E] rounded-xl p-7 text-white shadow-md relative overflow-hidden h-[200px] flex flex-col justify-between">
+                    <div className="absolute top-[-30px] right-[-30px] w-36 h-36 bg-white/5 rounded-full" />
                     <div>
-                       <p className="text-[13px] font-medium text-white/60 mb-6">Remaining Membership Limit</p>
-                       <h3 className="text-[52px] font-serif font-bold tracking-tight mb-8">₩{member.remaining.toLocaleString()}</h3>
+                       <p className="text-[8px] font-black text-white/50 mb-2 uppercase tracking-widest">{t.balance}</p>
+                       <h3 className="text-4xl num-clean">₩{member.remaining.toLocaleString()}</h3>
                     </div>
-                    <div className="flex gap-12 border-t border-white/10 pt-8">
+                    <div className="flex gap-8 pt-4 border-t border-white/10">
                        <div>
-                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Total Deposit</p>
-                          <p className="text-sm font-bold text-white/80">₩{member.deposit.toLocaleString()}</p>
+                          <p className="text-[7px] font-black text-white/30 uppercase mb-1 tracking-tighter">{t.deposit}</p>
+                          <p className="text-[10px] num-clean text-white/70">₩{member.deposit.toLocaleString()}</p>
                        </div>
                        <div>
-                          <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-2">Total Usage</p>
-                          <p className="text-sm font-bold text-white/80">₩{member.used.toLocaleString()}</p>
+                          <p className="text-[7px] font-black text-white/30 uppercase mb-1 tracking-tighter">{t.used}</p>
+                          <p className="text-[10px] num-clean text-white/70">₩{member.used.toLocaleString()}</p>
                        </div>
                     </div>
                  </div>
 
-                 {/* Membership Benefits Card (Image 1 우측) */}
-                 <div className="bg-white rounded-[16px] p-12 border border-gray-100 shadow-sm flex flex-col h-[340px]">
-                    <h4 className="text-[20px] font-serif font-bold text-[#1A362E] mb-8">Membership Benefits</h4>
-                    <div className="flex items-center gap-4 mb-6">
-                       <span className="text-2xl font-serif font-bold">{member.tier} Tier</span>
-                       <span className="bg-[#E7F7EF] text-[#27AE60] text-[10px] font-black px-4 py-1.5 rounded-md border border-[#D5EEDB]">15% Discount Applied</span>
+                 <div className="bg-white rounded-xl p-7 border border-gray-100 shadow-sm flex flex-col h-[200px]">
+                    <h4 className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-4">{t.grade}</h4>
+                    <div className="mb-auto">
+                       <span className="text-xl font-serif font-bold block text-[#1A1A1A]">{member.tier} <span className="text-[9px] font-sans text-gray-400 font-black">CLASS</span></span>
+                       <span className="mt-2 inline-block bg-[#E7F7EF] text-[#27AE60] text-[7px] font-black px-2 py-1 rounded border border-[#D5EEDB] uppercase">{t.discount}</span>
                     </div>
-                    <p className="text-[14px] text-gray-500 font-medium leading-relaxed mb-auto">
-                       Deposit an additional <span className="text-gray-900 font-bold">₩3,000,000</span> to upgrade to the next tier with <span className="text-hannam-gold font-bold">20% discount</span> benefits.
-                    </p>
-                    <p className="text-[11px] text-gray-300 font-medium italic">
-                       Note: Discount rates are calculated based on cumulative deposits and are automatically applied to all services and product payments.
-                    </p>
+                    <p className="text-[9px] text-gray-400 italic">Balanced & Sustainable Wellness</p>
                  </div>
               </div>
 
-              {/* Confirm & Sign Section (Image 3 - 관리자가 정산 요청 시에만 노출) */}
               {pendingRecord && (
-                <div className="bg-white p-12 rounded-[16px] border border-gray-100 shadow-sm animate-in fade-in slide-in-from-top-4">
-                   <div className="flex justify-between items-center mb-10">
-                      <h4 className="text-[20px] font-serif font-bold text-hannam-gold">Confirm Today's Session & Sign</h4>
-                      <span className="bg-[#FFF1F0] text-[#FF4D4D] px-5 py-2 rounded-md text-[10px] font-black uppercase tracking-widest border border-[#FFE5E3]">Awaiting Signature</span>
-                   </div>
-                   <div className="bg-[#F0F7FF] p-10 rounded-xl border border-[#D9EAFF] flex items-center gap-6 mb-12">
-                      <div className="w-12 h-12 bg-[#3498DB] rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-                         <CheckCircle className="w-6 h-6" />
+                <div className="bg-white p-6 rounded-xl border border-hannam-gold/30 shadow-lg animate-fade-in">
+                   <div className="flex justify-between items-center mb-5">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-hannam-gold" />
+                        <h4 className="text-xs font-bold text-[#1A362E]">{t.signTitle}</h4>
                       </div>
+                      <span className="text-[8px] font-black text-red-500 uppercase tracking-widest bg-red-50 px-2 py-1 rounded">{t.awaitingSign}</span>
+                   </div>
+                   
+                   <div className="bg-[#F8F9FB] p-4 rounded-lg flex items-center justify-between mb-5">
                       <div>
-                         <h5 className="text-[18px] font-bold text-[#1A362E] mb-1">{pendingRecord.content} (Today)</h5>
-                         <p className="text-[15px] font-bold text-[#3498DB]">Deduction: ₩{pendingRecord.discountedPrice.toLocaleString()}</p>
+                         <h5 className="text-[11px] font-bold text-[#1A1A1A] mb-0.5">{pendingRecord.content}</h5>
+                         <p className="text-[9px] text-gray-400 font-medium">{pendingRecord.therapistName} Therapist</p>
                       </div>
+                      <p className="text-base num-clean text-[#1A1A1A]">₩{pendingRecord.discountedPrice.toLocaleString()}</p>
                    </div>
-                   <div className="h-[360px] mb-10">
+
+                   <div className="h-[220px] mb-5">
                       <SignaturePad 
                         onSave={(data) => setSignature(data)} 
                         onClear={() => setSignature('')} 
                       />
                    </div>
+
                    <button 
                      onClick={handleSignComplete}
                      disabled={!signature || isProcessing}
-                     className="w-full py-6 bg-[#E9EDF1] text-[#718096] rounded-xl text-lg font-bold hover:bg-hannam-green hover:text-white transition-all active:scale-[0.99] disabled:opacity-50"
+                     className="w-full py-3.5 bg-hannam-green text-white rounded-lg text-[10px] font-black uppercase tracking-[0.2em] shadow-md hover:bg-black transition-all disabled:opacity-50"
                    >
-                     {isProcessing ? 'Processing...' : 'Confirm Session & Complete'}
+                     {isProcessing ? t.processing : t.pay}
                    </button>
-                   <p className="mt-6 text-center text-[11px] text-gray-400 font-medium">* This signature has legal effect under the Electronic Documents Act and signifies agreement to the service usage details.</p>
                 </div>
               )}
 
-              {/* Upcoming Schedule & Profile Section (Image 1 하단) */}
-              <div className="grid grid-cols-2 gap-8">
-                 <div className="bg-white p-12 rounded-[16px] border border-gray-100 shadow-sm">
-                    <h4 className="text-[18px] font-serif font-bold text-[#1A362E] mb-10 border-l-[3px] border-hannam-gold pl-6 flex items-center">Upcoming Schedule</h4>
-                    <div className="grid grid-cols-1 gap-6 mb-10">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                 <div className="bg-white p-7 rounded-xl border border-gray-100 shadow-sm">
+                    <h4 className="text-[9px] font-black text-gray-300 mb-5 uppercase tracking-widest">{t.upcoming}</h4>
+                    <div className="space-y-3">
                        {reservations.length > 0 ? reservations.slice(0, 2).map(res => (
-                         <div key={res.id} className="bg-[#FBF9F6] p-8 rounded-xl flex flex-col group">
-                            <h5 className="text-[16px] font-bold text-gray-900 mb-1">{res.serviceType}</h5>
-                            <p className="text-[11px] text-gray-400 font-bold mb-6">{new Date(res.dateTime).toLocaleString('en-US', { month: 'short', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' })}</p>
-                            <div className="flex items-center gap-2">
-                               <span className="bg-white px-2 py-0.5 rounded text-[8px] font-black uppercase text-gray-400 border border-gray-100">Staff</span>
-                               <span className="text-[11px] font-bold text-gray-500">Therapist: {res.therapistName}</span>
+                         <div key={res.id} className="bg-[#FBF9F6] p-4 rounded-lg flex justify-between items-center">
+                            <div>
+                               <h5 className="text-[11px] font-bold text-[#1A1A1A]">{res.serviceType}</h5>
+                               <p className="text-[8px] text-gray-400 font-bold mt-1 num-clean uppercase">
+                                 {new Date(res.dateTime).toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { month: 'short', day: 'numeric' })} | {new Date(res.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                               </p>
                             </div>
+                            <span className="text-[7px] font-black text-gray-300 uppercase">Confirmed</span>
                          </div>
-                       )) : <p className="text-gray-300 italic py-10">No upcoming sessions booked.</p>}
+                       )) : <p className="text-gray-300 italic text-[9px] py-4 text-center">{t.noRes}</p>}
                     </div>
-                    <button className="w-full py-5 bg-[#F4F6F8] text-[#718096] rounded-xl text-xs font-bold flex items-center justify-center gap-3 hover:bg-gray-100 transition-all">
-                       <Calendar className="w-4 h-4" /> View All Reservations
-                    </button>
                  </div>
 
-                 <div className="bg-white p-12 rounded-[16px] border border-gray-100 shadow-sm flex flex-col h-full">
-                    <h4 className="text-[18px] font-serif font-bold text-[#1A362E] mb-10 border-l-[3px] border-hannam-gold pl-6">Personal Wellness Profile</h4>
-                    <div className="space-y-10 mb-auto">
-                       <div className="flex justify-between items-end border-b border-gray-50 pb-6">
-                          <p className="text-[12px] font-black text-gray-400 uppercase tracking-widest">Core Care Goal</p>
-                          <p className="text-[14px] font-bold text-gray-900">{member.coreGoal || 'Stress Care & Sleep Quality'}</p>
+                 <div className="bg-white p-7 rounded-xl border border-gray-100 shadow-sm">
+                    <h4 className="text-[9px] font-black text-gray-300 mb-5 uppercase tracking-widest">{t.wellnessProfile}</h4>
+                    <div className="space-y-3">
+                       <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                          <p className="text-[8px] font-black text-gray-300 uppercase">{t.mainGoal}</p>
+                          <p className="text-[10px] font-bold text-[#1A1A1A]">{member.coreGoal}</p>
                        </div>
-                       <div className="flex justify-between items-end border-b border-gray-50 pb-6">
-                          <p className="text-[12px] font-black text-gray-400 uppercase tracking-widest">AI Recommended Session</p>
-                          <p className="text-[14px] font-bold text-hannam-gold">{member.aiRecommended || 'Meditation & Yoga Therapy'}</p>
+                       <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                          <p className="text-[8px] font-black text-gray-300 uppercase">{t.recommended}</p>
+                          <p className="text-[10px] font-bold text-hannam-gold">{member.aiRecommended}</p>
                        </div>
+                       <button className="w-full py-3 mt-2 bg-[#FBF9F6] text-hannam-gold rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-gray-100 transition-all flex items-center justify-center gap-2">
+                          {t.connect} <ChevronRight className="w-3 h-3" />
+                       </button>
                     </div>
-                    <button className="w-full mt-10 py-6 bg-hannam-green text-white rounded-xl text-xs font-bold shadow-xl flex items-center justify-center gap-3 hover:scale-[1.01] transition-transform">
-                       <Sparkles className="w-4 h-4 text-hannam-gold" /> Request AI Concierge Analysis
-                    </button>
                  </div>
               </div>
 
-              {/* History Table (Image 2 - 차감 내역 테이블) */}
-              <div className="bg-white rounded-[16px] border border-gray-100 shadow-sm overflow-hidden">
-                 <div className="p-12 pb-8">
-                    <h4 className="text-[20px] font-serif font-bold text-[#1A362E] border-l-[3px] border-hannam-gold pl-6">Usage History & Contract Management</h4>
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                 <div className="px-7 py-4 border-b border-gray-50">
+                    <h4 className="text-[9px] font-black text-gray-300 uppercase tracking-widest">{t.history}</h4>
                  </div>
-                 <div className="px-12 pb-12">
-                    <h5 className="text-[16px] font-serif font-bold text-gray-500 mb-8">Recent Deductions</h5>
-                    <table className="w-full text-left">
-                       <thead>
-                          <tr className="border-b border-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                             <th className="py-6 font-medium">Date</th>
-                             <th className="py-6 font-medium">Service</th>
-                             <th className="py-6 font-medium text-right">Amount Deducted</th>
+                 <table className="w-full text-left">
+                    <thead className="bg-[#FBF9F6]/50">
+                       <tr className="text-[8px] font-black text-gray-300 uppercase tracking-widest">
+                          <th className="px-7 py-3">Date</th>
+                          <th className="px-7 py-3">Service</th>
+                          <th className="px-7 py-3 text-right">Amount</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                       {history.filter(h => h.status === CareStatus.COMPLETED).slice(0, 5).map(h => (
+                          <tr key={h.id} className="text-[10px]">
+                             <td className="px-7 py-3.5 text-gray-400 num-clean">{h.date}</td>
+                             <td className="px-7 py-3.5 font-bold text-[#1A1A1A]">{h.content}</td>
+                             <td className="px-7 py-3.5 font-black text-right text-[#1A1A1A] num-clean">₩{h.discountedPrice.toLocaleString()}</td>
                           </tr>
-                       </thead>
-                       <tbody className="divide-y divide-gray-50">
-                          {history.filter(h => h.status === CareStatus.COMPLETED).slice(0, 5).map(h => (
-                             <tr key={h.id} className="text-sm">
-                                <td className="py-8 font-medium text-gray-500">{h.date}</td>
-                                <td className="py-8 font-bold text-gray-900">{h.content}</td>
-                                <td className="py-8 font-black text-gray-900 text-right">₩{h.discountedPrice.toLocaleString()}</td>
-                             </tr>
-                          ))}
-                          {history.length === 0 && (
-                            <tr><td colSpan={3} className="py-20 text-center text-gray-300 italic font-medium">No usage records available yet.</td></tr>
-                          )}
-                       </tbody>
-                    </table>
-                 </div>
+                       ))}
+                    </tbody>
+                 </table>
               </div>
            </div>
          )}
 
          {activeTab === 'notes' && (
-           <div className="animate-fade-in">
-              <h3 className="text-3xl font-serif font-bold text-hannam-green mb-16 px-2">Wellness Care Notes</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                 {/* Care Notes Grid (Image 4 시안 적용) */}
-                 {history.filter(h => h.status === CareStatus.COMPLETED).map((note, idx) => (
-                    <div key={note.id} className="bg-white p-12 rounded-[12px] border border-gray-100 shadow-sm flex flex-col hover:shadow-xl transition-all group">
-                       <div className="flex justify-between items-center mb-10">
-                          <span className={`px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-widest ${idx === 0 ? 'bg-hannam-green text-white' : 'bg-[#EBF0EE] text-gray-500'}`}>
-                            {idx === 0 ? 'Today Session' : note.content.split(' ')[0]}
-                          </span>
-                          <span className="text-[11px] font-bold text-gray-300">{note.date}</span>
-                       </div>
-                       <p className="text-[17px] font-serif italic text-gray-900 leading-relaxed mb-10 flex-1">
-                          "{note.feedback}"
-                       </p>
-                       <div className="space-y-6 pt-10 border-t border-gray-50">
-                          <div className="flex items-start gap-4">
-                             <CheckCircle className="w-4 h-4 text-hannam-green mt-1 flex-shrink-0" />
-                             <div className="flex-1">
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Recommendation</p>
-                                <div className="p-5 bg-[#F6FAF8] rounded-lg text-[13px] text-gray-600 leading-relaxed font-medium">
-                                   {note.recommendation}
-                                </div>
-                             </div>
-                          </div>
-                          <div className="flex justify-between items-center pt-4">
-                             <button className="text-[11px] font-black text-hannam-gold uppercase tracking-widest flex items-center gap-2 hover:text-[#1A362E] transition-colors">
-                                <Info className="w-3.5 h-3.5" /> See Details
-                             </button>
-                             <p className="text-[10px] font-bold text-gray-400">- {note.therapistName}</p>
-                          </div>
-                       </div>
+           <div className="animate-fade-in grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {history.filter(h => h.status === CareStatus.COMPLETED).map((note, idx) => (
+                 <div key={note.id} className="card-minimal p-6 flex flex-col h-[280px]">
+                    <div className="flex justify-between items-center mb-4">
+                       <span className={`px-2 py-1 rounded text-[7px] font-black uppercase tracking-widest ${idx === 0 ? 'bg-hannam-green text-white' : 'bg-gray-50 text-gray-400'}`}>
+                         {idx === 0 ? t.latest : t.past}
+                       </span>
+                       <span className="text-[9px] font-bold text-gray-300 num-clean">{note.date}</span>
                     </div>
-                 ))}
-                 {history.length === 0 && <div className="col-span-3 py-40 text-center text-gray-300 italic border-2 border-dashed rounded-[16px] font-medium">No care notes available yet.</div>}
-              </div>
+                    <p className="text-[13px] font-serif italic text-[#1A1A1A] leading-relaxed mb-6 flex-1 line-clamp-4">
+                       "{note.feedback}"
+                    </p>
+                    <div className="pt-4 border-t border-gray-50">
+                       <p className="text-[7px] font-black text-gray-300 uppercase mb-1">{t.therapistFeedback}</p>
+                       <p className="text-[10px] text-gray-500 font-medium leading-tight">
+                          {note.recommendation}
+                       </p>
+                    </div>
+                 </div>
+              ))}
+              {history.length === 0 && <div className="col-span-3 py-32 text-center text-gray-200 font-serif text-lg border-2 border-dashed rounded-xl uppercase">No care data recorded.</div>}
            </div>
          )}
 
-         {activeTab === 'ai' && (
-           <div className="animate-fade-in flex flex-col items-center justify-center py-20 text-center max-w-2xl mx-auto">
-              <div className="w-24 h-24 bg-hannam-green rounded-3xl flex items-center justify-center text-white shadow-2xl mb-12">
-                 <Sparkles className="w-12 h-12 text-hannam-gold" />
+         {activeTab === 'concierge' && (
+           <div className="animate-fade-in py-16 text-center max-w-lg mx-auto flex flex-col items-center">
+              <div className="w-14 h-14 bg-hannam-green rounded-full flex items-center justify-center text-white shadow-lg mb-6">
+                 <User className="w-7 h-7 text-hannam-gold" />
               </div>
-              <h3 className="text-4xl font-serif font-bold text-hannam-green mb-6">AI WELLNESS CONCIERGE</h3>
-              <p className="text-gray-400 font-medium leading-relaxed mb-12">
-                 당신의 최근 케어 데이터와 바이오 리듬을 분석하여,<br/>오늘 가장 필요한 최적의 휴식 코스를 설계합니다.
+              <h3 className="text-xl font-serif font-bold text-[#1A1A1A] mb-3 uppercase tracking-[0.1em]">THE HANNAM CONCIERGE</h3>
+              <p className="text-gray-400 font-medium mb-10 text-[11px] leading-relaxed">
+                 {lang === 'ko' ? '회원님의 품격 있는 휴식을 위해 전담 컨시어지가 대기하고 있습니다.' : 'Dedicated concierge is available to ensure your premium relaxation experience.'}
               </p>
-              <button className="px-12 py-6 bg-hannam-green text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-2xl flex items-center gap-3 hover:scale-105 transition-transform">
-                 Generate Personalized Report <ChevronRight className="w-4 h-4" />
+              <div className="grid grid-cols-2 gap-3 w-full mb-8">
+                 <div className="p-4 card-minimal text-left">
+                    <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest mb-1">Direct Line</p>
+                    <p className="text-[11px] font-bold text-hannam-gold num-clean">02.1234.5678</p>
+                 </div>
+                 <div className="p-4 card-minimal text-left">
+                    <p className="text-[7px] font-black text-gray-300 uppercase tracking-widest mb-1">Hours</p>
+                    <p className="text-[11px] font-bold text-gray-800 num-clean">10:00 - 20:00</p>
+                 </div>
+              </div>
+              <button className="px-8 py-4 bg-hannam-green text-white rounded-lg text-[9px] font-black uppercase tracking-[0.4em] shadow-lg hover:scale-[1.02] transition-transform">
+                 {lang === 'ko' ? '전담 컨시어지 문의하기' : 'CONTACT CONCIERGE'}
               </button>
            </div>
          )}

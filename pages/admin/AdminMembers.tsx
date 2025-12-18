@@ -19,51 +19,52 @@ export const AdminMembers: React.FC = () => {
   );
 
   return (
-    <div className="p-12 bg-[#FBF9F6] min-h-screen font-sans animate-fade-in">
+    <div className="p-10 bg-[#FDFDFD] min-h-screen font-sans animate-fade-in">
       <div className="max-w-7xl mx-auto">
-        <header className="flex justify-between items-end mb-12">
+        <header className="flex justify-between items-end mb-10 border-b border-gray-50 pb-8">
           <div>
-            <h1 className="text-3xl font-serif font-medium text-gray-900 mb-2">회원 명부 (Registry)</h1>
+            <h1 className="text-2xl font-serif font-bold text-[#1A1A1A] uppercase tracking-wider">Member Registry</h1>
+            <p className="text-[10px] font-black text-[#C9B08F] uppercase tracking-[0.4em] mt-1">Hannam Wellness Professional Network</p>
           </div>
           <button 
             onClick={() => navigate('/admin/register')}
-            className="bg-[#333] text-white px-6 py-3 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-black shadow-lg transition-all"
+            className="bg-[#1A1A1A] text-white px-6 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-black transition-all shadow-sm"
           >
-            <UserPlus className="w-4 h-4" /> 신규 등록
+            <UserPlus className="w-3.5 h-3.5" /> 신규 등록
           </button>
         </header>
 
-        {/* Filter Bar */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex gap-4 mb-8">
+        {/* Filter Bar - Compact */}
+        <div className="flex gap-4 mb-8">
            <div className="flex-1 relative">
-              <Search className="absolute left-4 top-[14px] w-4 h-4 text-gray-300" />
+              <Search className="absolute left-4 top-[14px] w-3.5 h-3.5 text-gray-300" />
               <input 
                 type="text" 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                placeholder="이름 또는 전화번호 검색..." 
-                className="w-full pl-12 pr-6 py-3 bg-[#FBF9F6] rounded-xl text-xs outline-none focus:ring-1 focus:ring-[#C9B08F] transition-all" 
+                placeholder="Name or Phone Number..." 
+                className="w-full pl-10 pr-6 py-3 bg-white border border-gray-100 rounded-lg text-[12px] font-bold outline-none focus:border-[#C9B08F] transition-all" 
               />
            </div>
-           <button className="px-6 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-400 flex items-center gap-2 hover:bg-gray-50">
-              <Filter className="w-4 h-4" /> 전체 상태
+           <button className="px-6 py-3 bg-white border border-gray-100 rounded-lg text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 hover:border-[#C9B08F] transition-all">
+              <Filter className="w-3 h-3" /> Status
            </button>
-           <button className="px-6 py-2.5 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-400 flex items-center gap-2 hover:bg-gray-50">
-              <ArrowUpDown className="w-4 h-4" /> 최신 등록순
+           <button className="px-6 py-3 bg-white border border-gray-100 rounded-lg text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2 hover:border-[#C9B08F] transition-all">
+              <ArrowUpDown className="w-3 h-3" /> Sort By
            </button>
         </div>
 
-        {/* Member Table */}
-        <div className="bg-white rounded-[32px] shadow-sm border border-gray-50 overflow-hidden">
+        {/* Member Table - Professional */}
+        <div className="card-minimal overflow-hidden">
            <table className="w-full text-left">
               <thead>
-                 <tr className="border-b border-gray-50 text-[10px] font-black text-gray-300 uppercase tracking-widest bg-[#FBF9F6]/50">
-                    <th className="px-10 py-6">회원 정보 (Client)</th>
-                    <th className="px-10 py-6">가입일 (Reg. Date)</th>
-                    <th className="px-10 py-6 text-center">등급 (Tier)</th>
-                    <th className="px-10 py-6 text-center">상태 (Status)</th>
-                    <th className="px-10 py-6">잔여 예치금</th>
-                    <th className="px-10 py-6 text-right">상세</th>
+                 <tr className="bg-[#FBFBFB] text-[9px] font-black text-gray-300 uppercase tracking-[0.2em] border-b border-gray-100">
+                    <th className="px-8 py-5">Profile</th>
+                    <th className="px-8 py-5">Reg. Date</th>
+                    <th className="px-8 py-5 text-center">Tier</th>
+                    <th className="px-8 py-5 text-center">Status</th>
+                    <th className="px-8 py-5 text-right">Balance</th>
+                    <th className="px-8 py-5 text-right">Actions</th>
                  </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -71,40 +72,39 @@ export const AdminMembers: React.FC = () => {
                     <tr 
                       key={member.id} 
                       onClick={() => navigate(`/admin/member/${member.id}`)}
-                      className="group hover:bg-gray-50 cursor-pointer transition-colors"
+                      className="group hover:bg-[#FDFDFD] cursor-pointer transition-colors"
                     >
-                       <td className="px-10 py-8 flex items-center gap-5">
-                          <div className="w-12 h-12 bg-gray-900 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                       <td className="px-8 py-5 flex items-center gap-4">
+                          <div className="w-10 h-10 bg-hannam-green rounded-full flex items-center justify-center text-white text-xs font-serif font-bold">
                              {member.name[0]}
                           </div>
                           <div>
-                             <p className="text-lg font-bold text-gray-900">{member.name}</p>
-                             <p className="text-xs text-gray-400 font-medium">{member.phone}</p>
+                             <p className="text-[13px] font-bold text-[#1A1A1A] group-hover:text-[#C9B08F] transition-colors">{member.name}</p>
+                             <p className="text-[10px] text-gray-300 num-clean tracking-tighter">{member.phone}</p>
                           </div>
                        </td>
-                       <td className="px-10 py-8 text-sm font-bold text-gray-400">{member.joinedAt}</td>
-                       <td className="px-10 py-8 text-center">
-                          <span className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
-                             member.tier === 'ROYAL' ? 'bg-gray-800 text-white border-transparent' : 'bg-white text-gray-400 border-gray-200'
+                       <td className="px-8 py-5 text-[12px] num-clean text-gray-400">{member.joinedAt}</td>
+                       <td className="px-8 py-5 text-center">
+                          <span className={`px-3 py-1 rounded-md text-[8px] font-black uppercase tracking-widest border ${
+                             member.tier === 'ROYAL' ? 'bg-[#1A1A1A] text-white border-transparent' : 'bg-white text-gray-300 border-gray-100'
                           }`}>
-                             {member.tier === 'ROYAL' ? 'Prestige' : member.tier === 'GOLD' ? 'Premium' : 'Standard'}
+                             {member.tier}
                           </span>
                        </td>
-                       <td className="px-10 py-8 text-center">
-                          <span className="px-3 py-1 bg-green-50 text-green-500 text-[9px] font-black uppercase tracking-widest rounded-lg border border-green-100">Active</span>
+                       <td className="px-8 py-5 text-center">
+                          <span className="text-[9px] font-black text-[#27AE60] uppercase tracking-widest">Active</span>
                        </td>
-                       <td className="px-10 py-8">
-                          <p className="text-lg font-bold text-gray-900">₩{member.remaining.toLocaleString()}</p>
-                          <p className="text-[10px] text-gray-300 font-bold">총 ₩{member.deposit.toLocaleString()}</p>
+                       <td className="px-8 py-5 text-right">
+                          <p className="text-[14px] num-clean text-[#1A1A1A]">₩{member.remaining.toLocaleString()}</p>
                        </td>
-                       <td className="px-10 py-8 text-right">
-                          <ChevronRight className="w-5 h-5 text-gray-200 group-hover:text-gray-900 transition-colors inline" />
+                       <td className="px-8 py-5 text-right">
+                          <ChevronRight className="w-4 h-4 text-gray-100 group-hover:text-[#1A1A1A] transition-colors inline" />
                        </td>
                     </tr>
                  ))}
                  {filteredMembers.length === 0 && (
                    <tr>
-                     <td colSpan={6} className="px-10 py-20 text-center text-gray-300 font-bold">검색 결과가 없습니다.</td>
+                     <td colSpan={6} className="px-10 py-20 text-center text-[11px] text-gray-300 italic font-medium uppercase tracking-widest">No matching results in registry.</td>
                    </tr>
                  )}
               </tbody>

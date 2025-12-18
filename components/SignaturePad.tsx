@@ -10,6 +10,7 @@ interface SignaturePadProps {
 export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -17,14 +18,16 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.strokeStyle = '#1A362E';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5;
         ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
       }
     }
   }, []);
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
     setIsDrawing(true);
+    setHasDrawn(true);
     draw(e);
   };
 
@@ -58,19 +61,21 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
     if (canvas && ctx) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.beginPath();
+      setHasDrawn(false);
       onClear();
     }
   };
 
   return (
-    <div className="relative w-full h-full bg-[#F9F9F9] rounded-[32px] border-2 border-dashed border-gray-100 overflow-hidden group">
+    <div className="relative w-full h-full bg-[#FFFFFF] rounded-xl border border-gray-200 overflow-hidden group shadow-inner">
       <canvas
         ref={canvasRef}
         width={800}
         height={400}
-        className="w-full h-full cursor-crosshair"
+        className="w-full h-full cursor-crosshair touch-none"
         onMouseDown={startDrawing}
         onMouseUp={stopDrawing}
+        onMouseLeave={stopDrawing}
         onMouseMove={draw}
         onTouchStart={startDrawing}
         onTouchEnd={stopDrawing}
@@ -79,13 +84,14 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
       <button
         type="button"
         onClick={handleClear}
-        className="absolute bottom-6 right-6 p-3 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-red-500 shadow-sm transition-all"
+        className="absolute bottom-4 right-4 p-2.5 bg-white border border-gray-100 rounded-lg text-gray-300 hover:text-red-500 shadow-sm transition-all"
+        title="지우기"
       >
-        <RotateCcw className="w-4 h-4" />
+        <RotateCcw className="w-3.5 h-3.5" />
       </button>
-      {!isDrawing && canvasRef.current && (
+      {!hasDrawn && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-          <p className="text-xl font-serif italic text-hannam-green">서명해 주세요 (Sign Here)</p>
+          <p className="text-sm font-serif italic text-hannam-green tracking-widest uppercase">Sign Here</p>
         </div>
       )}
     </div>

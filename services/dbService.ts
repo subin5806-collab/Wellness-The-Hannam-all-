@@ -26,11 +26,11 @@ const saveCollection = (key: string, data: any[]) => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
-export const generateHannamFilename = (memberName: string, memberId: string, joinedAt: string, docTitle: string) => {
-  const cleanName = memberName.replace(/\s/g, '');
-  const cleanDate = joinedAt.split('T')[0];
-  const cleanTitle = docTitle.replace(/\s/g, '');
-  return `${cleanName}_${memberId}_${cleanDate}_${cleanTitle}.pdf`;
+// Added missing helper function for contract filename generation to match usage in ContractDashboard
+export const generateHannamFilename = (name: string, id: string, joinedAt: string, typeName: string): string => {
+  const cleanDate = joinedAt.replace(/-/g, '');
+  // Format: [THE_HANNAM]_[JOIN_DATE]_[NAME]_[TYPE].pdf
+  return `[THE_HANNAM]_${cleanDate}_${name}_${typeName}.pdf`;
 };
 
 export const dbService = {
@@ -81,7 +81,6 @@ export const dbService = {
 
   getTemplates: async () => { await delay(); return getCollection<ContractTemplate>(COLLECTIONS.TEMPLATES); },
   
-  // Added saveTemplate method
   saveTemplate: async (data: any) => {
     await delay();
     const templates = getCollection<ContractTemplate>(COLLECTIONS.TEMPLATES);
@@ -100,7 +99,6 @@ export const dbService = {
 
   getAllContracts: async () => { await delay(); return getCollection<Contract>(COLLECTIONS.CONTRACTS); },
   
-  // Added createContract method
   createContract: async (data: any) => {
     await delay(1000);
     const contracts = getCollection<Contract>(COLLECTIONS.CONTRACTS);
