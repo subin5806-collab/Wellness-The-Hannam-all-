@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { dbService } from '../../services/dbService';
+import { dbService, generateHannamFilename } from '../../services/dbService';
 import { CareRecord, Member } from '../../types';
-import { Mail, Smartphone, CheckCircle2, ChevronRight, Printer, Share2 } from 'lucide-react';
+import { Mail, Smartphone, CheckCircle2, ChevronRight, Download, Printer, Share2 } from 'lucide-react';
 
 export const AdminCareResult: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +22,19 @@ export const AdminCareResult: React.FC = () => {
       });
     }
   }, [id]);
+
+  const handleDownload = () => {
+    if (!member || !record) return;
+    const filename = generateHannamFilename(member.name, member.id, record.date);
+    const content = `THE HANNAM OFFICIAL SESSION RECEIPT\n\nDate: ${record.date}\nMember: ${member.name} (${member.id})\nProgram: ${record.content}\nAmount: ${record.discountedPrice.toLocaleString()} KRW\n\nSignature Verified: ${record.signature ? 'YES' : 'NO'}`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   if (!record || !member) return <div className="p-20 text-center animate-pulse text-gray-300 font-serif tracking-widest">Generating Official Receipt...</div>;
 
@@ -55,23 +68,26 @@ export const AdminCareResult: React.FC = () => {
                  <p className="text-[9px] font-black text-gray-300 uppercase tracking-[0.4em]">Official Receipt</p>
               </div>
 
-              <div className="relative z-10 space-y-6 mb-10 border-t border-gray-50 pt-10">
-                 <div className="flex justify-between items-center">
+              <div className="relative z-10 space-y-6 mb-10 border-t border-gray-50 pt-10 text-center">
+                 <button onClick={handleDownload} className="mx-auto mb-6 flex items-center gap-2 text-[10px] font-black uppercase text-hannam-gold tracking-widest hover:text-hannam-green transition-colors">
+                    <Download className="w-4 h-4" /> Download PDF Receipt
+                 </button>
+                 <div className="flex justify-between items-center px-4">
                     <span className="text-gray-300 font-black uppercase tracking-widest text-[8px]">Date</span>
                     <span className="font-bold text-gray-800 text-xs num-clean">{currentTime}</span>
                  </div>
-                 <div className="flex justify-between items-center">
+                 <div className="flex justify-between items-center px-4">
                     <span className="text-gray-300 font-black uppercase tracking-widest text-[8px]">Program</span>
                     <span className="font-bold text-gray-800 text-xs">{record.content}</span>
                  </div>
               </div>
 
-              <div className="relative z-10 flex justify-between items-end mb-8 pt-8 border-t border-dashed border-gray-100">
+              <div className="relative z-10 flex justify-between items-end mb-8 pt-8 border-t border-dashed border-gray-100 px-4">
                  <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-2">Deducted</span>
                  <span className="text-3xl font-serif font-bold text-gray-900 num-clean">-{record.discountedPrice.toLocaleString()}</span>
               </div>
 
-              <div className="relative z-10 flex justify-between items-end mb-12">
+              <div className="relative z-10 flex justify-between items-end mb-12 px-4">
                  <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-2">Remaining</span>
                  <span className="text-2xl font-serif font-bold text-[#C9B08F] num-clean">₩ {member.remaining.toLocaleString()}</span>
               </div>
@@ -96,8 +112,7 @@ export const AdminCareResult: React.FC = () => {
               Notification Status
            </h2>
 
-           {/* Email Card */}
-           <div className="card-minimal flex flex-col overflow-hidden">
+           <div className="card-minimal flex flex-col overflow-hidden shadow-sm">
               <div className="px-6 py-4 bg-[#FBFBFB] border-b border-gray-50 flex justify-between items-center">
                  <div className="flex items-center gap-3">
                     <Mail className="w-3.5 h-3.5 text-gray-300" />
@@ -125,8 +140,7 @@ export const AdminCareResult: React.FC = () => {
               </div>
            </div>
 
-           {/* SMS Card */}
-           <div className="card-minimal overflow-hidden">
+           <div className="card-minimal overflow-hidden shadow-sm">
               <div className="px-6 py-4 bg-[#FBFBFB] border-b border-gray-50 flex justify-between items-center">
                  <div className="flex items-center gap-3">
                     <Smartphone className="w-3.5 h-3.5 text-gray-300" />
@@ -147,7 +161,7 @@ export const AdminCareResult: React.FC = () => {
            <div className="mt-auto pt-3">
               <button 
                 onClick={() => navigate(`/admin/member/${member.id}`)}
-                className="w-full py-5 bg-[#1A1A1A] text-white rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-lg hover:bg-black transition-all flex items-center justify-center gap-3"
+                className="w-full py-5 bg-[#1A1A1A] text-white rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3"
               >
                 Back to Member Profile <ChevronRight className="w-3.5 h-3.5" />
               </button>

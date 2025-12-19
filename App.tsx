@@ -17,8 +17,7 @@ import { ContractViewer } from './pages/contract/ContractViewer';
 import { authService } from './services/authService';
 import { dbService, validateEmail } from './services/dbService';
 import { UserRole, User } from './types';
-// Fixed: Added missing ChevronRight from lucide-react imports
-import { LogOut, LayoutGrid, Users, Calendar, FileText, Settings, Shield, ChevronRight } from 'lucide-react';
+import { LogOut, LayoutGrid, Users, Calendar, FileText, Shield, ChevronRight } from 'lucide-react';
 
 const AdminLayout: React.FC<{ user: User; onLogout: () => void; children: React.ReactNode }> = ({ user, onLogout, children }) => {
   const location = useLocation();
@@ -26,7 +25,6 @@ const AdminLayout: React.FC<{ user: User; onLogout: () => void; children: React.
     { label: 'Dashboard', path: '/admin', icon: LayoutGrid },
     { label: 'Reservations', path: '/admin/reservations', icon: Calendar },
     { label: 'Members', path: '/admin/members', icon: Users },
-    { label: 'Staffs', path: '/admin/therapists', icon: Settings },
     { label: 'Contracts', path: '/admin/contracts', icon: FileText },
   ];
 
@@ -36,12 +34,9 @@ const AdminLayout: React.FC<{ user: User; onLogout: () => void; children: React.
     <div className="flex flex-col h-screen bg-hannam-bg">
       <header className="bg-white px-10 py-4 flex justify-between items-center border-b border-hannam-border z-[100] shadow-sm">
         <div className="flex items-center gap-16">
-          <div className="flex items-center gap-4">
-             <div className="w-8 h-8 bg-hannam-green rounded-full flex items-center justify-center text-white text-[8px] font-bold">Logo</div>
-             <div className="flex flex-col">
-               <h1 className="text-xs font-serif font-bold tracking-[0.3em] text-hannam-text uppercase">WELLNESS, THE HANNAM</h1>
-               <span className="text-[9px] font-bold text-hannam-gold uppercase tracking-[0.2em] mt-0.5">ADMIN INTELLIGENCE</span>
-             </div>
+          <div className="flex flex-col">
+            <h1 className="text-xs font-serif font-bold tracking-[0.3em] text-hannam-text uppercase">WELLNESS, THE HANNAM</h1>
+            <span className="text-[9px] font-bold text-hannam-gold uppercase tracking-[0.2em] mt-0.5">ADMIN INTELLIGENCE</span>
           </div>
           <nav className="flex gap-4">
             {navItems.map(item => (
@@ -101,11 +96,10 @@ const LoginScreen: React.FC<{
     <div className="min-h-screen bg-hannam-gray-bg flex items-center justify-center p-6 font-sans">
       <div className="w-full max-w-md bg-white p-12 rounded-[32px] shadow-2xl border border-hannam-border text-center relative overflow-hidden animate-fade-in">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-hannam-green" />
-        <div className="w-16 h-16 bg-hannam-green rounded-2xl mx-auto flex items-center justify-center mb-8 shadow-xl">
-          <Shield className="w-8 h-8 text-hannam-gold" />
+        <div className="py-10">
+          <h1 className="text-2xl font-serif font-medium text-hannam-text mb-2 tracking-[0.1em] uppercase">WELLNESS, THE HANNAM</h1>
+          <p className="text-[9px] font-bold text-hannam-subtext uppercase tracking-[0.5em] mb-4">INTELLIGENCE REGISTRY SERVICE</p>
         </div>
-        <h1 className="text-2xl font-serif font-medium text-hannam-text mb-2 tracking-[0.1em] uppercase">WELLNESS, THE HANNAM</h1>
-        <p className="text-[9px] font-bold text-hannam-subtext uppercase tracking-[0.5em] mb-12">INTELLIGENCE REGISTRY SERVICE</p>
         
         {mode === 'select' && (
           <div className="space-y-4">

@@ -57,6 +57,7 @@ export interface Member {
   coreGoal: string;
   aiRecommended: string;
   joinedAt: string;
+  expiryDate?: string; // 회원 만료일
   adminNote?: string;
   address?: string;
 }

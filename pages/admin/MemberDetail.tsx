@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { dbService, generateHannamFilename } from '../../services/dbService';
-import { Member, CareRecord, CareStatus, Reservation } from '../../types';
-import { ArrowLeft, Edit2, Download, Plus, Clock, FileText, LayoutGrid, Sparkles, MessageCircle, Check, Calendar, User } from 'lucide-react';
+import { Member, CareRecord, CareStatus, Reservation, Therapist } from '../../types';
+import { ArrowLeft, Edit2, Download, Plus, Clock, FileText, LayoutGrid, Sparkles, MessageCircle, Check, Calendar, Mail, X } from 'lucide-react';
 
 export const MemberDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -11,8 +11,16 @@ export const MemberDetail: React.FC = () => {
   const [member, setMember] = useState<Member | null>(null);
   const [history, setHistory] = useState<CareRecord[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [activeTab, setActiveTab] = useState<'membership' | 'history' | 'notes' | 'schedule' | 'ai'>('membership');
   const [loading, setLoading] = useState(true);
+  const [isResModalOpen, setIsResModalOpen] = useState(false);
+  
+  const [newRes, setNewRes] = useState({
+    therapistId: '',
+    dateTime: '',
+    serviceType: ''
+  });
 
   useEffect(() => {
     if (id) {
@@ -20,38 +28,54 @@ export const MemberDetail: React.FC = () => {
       Promise.all([
         dbService.getMemberById(id),
         dbService.getMemberCareHistory(id),
-        dbService.getReservations(id)
-      ]).then(([m, h, r]) => {
+        dbService.getReservations(id),
+        dbService.getTherapists()
+      ]).then(([m, h, r, th]) => {
         if (m) setMember(m);
         setHistory(h);
         setReservations(r);
+        setTherapists(th);
         setLoading(false);
       });
     }
   }, [id]);
 
+  const handleResendCare = async (rec: CareRecord) => {
+    await dbService.resendEmail('care', rec.id);
+    alert(`${member?.name} 회원님께 차감 내역 영수증이 재발송되었습니다.`);
+  };
+
+  const handleCreateReservation = async () => {
+    if (!member || !newRes.therapistId || !newRes.dateTime || !newRes.serviceType) return alert('모든 항목을 입력하세요.');
+    const therapist = therapists.find(t => t.id === newRes.therapistId);
+    await dbService.createReservation({
+      memberId: member.id,
+      memberName: member.name,
+      therapistId: newRes.therapistId,
+      therapistName: therapist?.name || 'Unknown',
+      dateTime: newRes.dateTime,
+      serviceType: newRes.serviceType
+    });
+    alert('예약이 성공적으로 등록되었습니다.');
+    setIsResModalOpen(false);
+    dbService.getReservations(member.id).then(setReservations);
+  };
+
   const handleDownloadSession = (rec: CareRecord) => {
     if (!member) return;
-    const filename = generateHannamFilename(member.name, member.id, rec.date, rec.content);
-    
+    // Fix: generateHannamFilename expects 3 arguments (name, id, dateStr), but 4 were passed. Removed rec.content.
+    const filename = generateHannamFilename(member.name, member.id, rec.date);
     const content = `THE HANNAM OFFICIAL SESSION RECEIPT\n\nDate: ${rec.date}\nMember: ${member.name} (${member.id})\nProgram: ${rec.content}\nAmount: ${rec.discountedPrice.toLocaleString()} KRW\n\nSignature Verified: ${rec.signature ? 'YES' : 'NO'}`;
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
-    document.body.appendChild(a);
     a.click();
     URL.revokeObjectURL(url);
-    document.body.removeChild(a);
   };
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F7F7F7]">
-      <div className="w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></div>
-    </div>
-  );
-  
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#F7F7F7] font-serif text-hannam-gold uppercase tracking-widest">Loading Member Data...</div>;
   if (!member) return <div className="p-20 text-center text-gray-400">회원을 찾을 수 없습니다.</div>;
 
   return (
@@ -61,9 +85,9 @@ export const MemberDetail: React.FC = () => {
           <ArrowLeft className="w-4 h-4" /> 회원 목록
         </button>
         <div className="flex items-center gap-6">
-           <div className="flex items-center gap-2 bg-[#F9F9F9] px-4 py-2 rounded-full border border-gray-100">
+          <div className="flex items-center gap-2 bg-[#F9F9F9] px-4 py-2 rounded-full border border-gray-100">
             <div className="w-2 h-2 bg-green-500 rounded-full" />
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Administrator Mode</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Manager Console</span>
           </div>
           <div className="text-right">
              <p className="text-xs font-black text-gray-900 leading-none">{member.name}</p>
@@ -75,12 +99,11 @@ export const MemberDetail: React.FC = () => {
       <div className="max-w-7xl mx-auto px-8 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <div className="lg:col-span-4 space-y-8">
            <div className="bg-white rounded-[40px] p-10 shadow-sm border border-gray-50 flex flex-col items-center">
-              <div className="w-28 h-28 bg-[#F3F3F3] rounded-full flex items-center justify-center text-3xl font-bold text-gray-300 mb-6 border-4 border-white shadow-lg overflow-hidden">
+              <div className="w-28 h-28 bg-[#1A362E] rounded-full flex items-center justify-center text-3xl font-serif font-bold text-hannam-gold mb-6 border-4 border-white shadow-lg overflow-hidden">
                 {member.name[0]}
               </div>
               <h2 className="text-3xl font-black text-gray-900 mb-1">{member.name}</h2>
-              <p className="text-gray-400 font-bold mb-8">{member.phone}</p>
-
+              <p className="text-gray-400 font-bold mb-8 num-clean">{member.phone}</p>
               <div className="w-full space-y-4 px-2">
                  {[
                    { label: '성별', value: member.gender },
@@ -94,10 +117,9 @@ export const MemberDetail: React.FC = () => {
                    </div>
                  ))}
               </div>
-
               <div className="w-full mt-10 bg-[#F9F9F9] rounded-[24px] p-6 border border-gray-100">
                  <div className="flex justify-between items-center mb-3">
-                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Admin Notes</span>
+                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Admin Notes</span>
                    <Edit2 className="w-3 h-3 text-gray-300 hover:text-black cursor-pointer" />
                  </div>
                  <p className="text-xs font-medium text-gray-600 italic">"{member.adminNote || '특이사항 없음'}"</p>
@@ -121,9 +143,9 @@ export const MemberDetail: React.FC = () => {
                     activeTab === tab.id ? 'text-gray-900' : 'text-gray-300 hover:text-gray-500'
                   }`}
                 >
-                  <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-black' : 'text-gray-200'}`} />
+                  <tab.icon className={`w-4 h-4 ${activeTab === tab.id ? 'text-hannam-gold' : 'text-gray-200'}`} />
                   {tab.label}
-                  {activeTab === tab.id && <div className="absolute bottom-[-1px] left-0 w-full h-[3px] bg-black rounded-full" />}
+                  {activeTab === tab.id && <div className="absolute bottom-[-1px] left-0 w-full h-[3px] bg-[#1A362E] rounded-full" />}
                 </button>
               ))}
            </div>
@@ -132,18 +154,17 @@ export const MemberDetail: React.FC = () => {
              {activeTab === 'membership' && (
                <div className="space-y-8">
                   <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-black text-white p-10 rounded-[40px] shadow-xl relative overflow-hidden">
-                       <div className="absolute top-0 right-0 p-8 opacity-10"><LayoutGrid className="w-20 h-20" /></div>
-                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Remaining Balance</p>
-                       <h3 className="text-4xl font-serif font-bold mb-8">₩ {member.remaining.toLocaleString()}</h3>
+                    <div className="bg-[#1A362E] text-white p-10 rounded-[40px] shadow-xl relative overflow-hidden">
+                       <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-4">Remaining Balance</p>
+                       <h3 className="text-4xl font-serif font-bold mb-8 text-hannam-gold">₩ {member.remaining.toLocaleString()}</h3>
                        <div className="flex gap-8 border-t border-white/10 pt-6">
                           <div>
-                            <p className="text-[9px] text-gray-500 uppercase font-black">Total Deposit</p>
-                            <p className="text-sm font-bold">₩ {member.deposit.toLocaleString()}</p>
+                            <p className="text-[9px] text-white/30 uppercase font-black">Total Deposit</p>
+                            <p className="text-sm font-bold num-clean">₩ {member.deposit.toLocaleString()}</p>
                           </div>
                           <div>
-                            <p className="text-[9px] text-gray-500 uppercase font-black">Total Used</p>
-                            <p className="text-sm font-bold">₩ {member.used.toLocaleString()}</p>
+                            <p className="text-[9px] text-white/30 uppercase font-black">Total Used</p>
+                            <p className="text-sm font-bold num-clean">₩ {member.used.toLocaleString()}</p>
                           </div>
                        </div>
                     </div>
@@ -152,7 +173,7 @@ export const MemberDetail: React.FC = () => {
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Current Status</p>
                           <h4 className="text-2xl font-serif font-bold text-gray-900">{member.tier} Tier</h4>
                        </div>
-                       <button onClick={() => navigate('/admin/contract/new')} className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white transition-all">
+                       <button onClick={() => navigate('/admin/contract/new')} className="w-full py-4 bg-gray-50 text-gray-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-[#1A362E] hover:text-white transition-all">
                          Renew / Upgrade Membership
                        </button>
                     </div>
@@ -176,18 +197,26 @@ export const MemberDetail: React.FC = () => {
                               <p className="text-xs font-bold text-gray-300 uppercase">{item.date} — {item.therapistName}</p>
                            </div>
                         </div>
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4">
                            <div className="text-right">
-                              <p className="text-xl font-black text-gray-900">₩ {item.discountedPrice.toLocaleString()}</p>
+                              <p className="text-xl font-black text-gray-900 num-clean">₩ {item.discountedPrice.toLocaleString()}</p>
                               <span className={`text-[9px] font-black px-2 py-0.5 rounded uppercase tracking-widest ${item.status === CareStatus.COMPLETED ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
                                 {item.status}
                               </span>
                            </div>
                            <button 
+                             onClick={() => handleResendCare(item)}
+                             className="p-3 bg-[#E7F0FF] text-[#4A90E2] rounded-xl hover:bg-[#4A90E2] hover:text-white transition-all"
+                             title="영수증 재발송"
+                           >
+                             <Mail className="w-4 h-4" />
+                           </button>
+                           <button 
                              onClick={() => handleDownloadSession(item)}
                              className="p-3 bg-gray-50 rounded-xl text-gray-300 hover:text-black hover:bg-gray-100 transition-all"
+                             title="다운로드"
                            >
-                             <Download className="w-5 h-5" />
+                             <Download className="w-4 h-4" />
                            </button>
                         </div>
                       </div>
@@ -196,50 +225,85 @@ export const MemberDetail: React.FC = () => {
                </div>
              )}
 
-             {activeTab === 'notes' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {history.map(note => (
-                    <div key={note.id} className="bg-white p-10 rounded-[32px] border border-gray-50 shadow-sm flex flex-col relative group">
-                       <button className="absolute top-8 right-8 text-gray-200 hover:text-black transition-colors opacity-0 group-hover:opacity-100"><Edit2 className="w-4 h-4"/></button>
-                       <div className="flex justify-between items-center mb-8">
-                         <span className="px-4 py-1.5 bg-[#F9F9F9] rounded-full text-[9px] font-black text-gray-400 uppercase tracking-widest">{note.date}</span>
-                       </div>
-                       <p className="text-lg font-serif italic text-gray-900 leading-relaxed mb-8 flex-1">"{note.feedback}"</p>
-                       <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
-                          <div className="flex items-center gap-2 mb-2">
-                             <Check className="w-3 h-3 text-hannam-gold" />
-                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Next Recommended</span>
-                          </div>
-                          <p className="text-xs text-gray-600 leading-relaxed font-bold">{note.recommendation}</p>
-                       </div>
-                    </div>
-                  ))}
-                </div>
-             )}
-
              {activeTab === 'schedule' && (
                 <div className="space-y-6">
-                   {reservations.map(res => (
+                   <div className="flex justify-end mb-4">
+                      <button 
+                        onClick={() => setIsResModalOpen(true)}
+                        className="bg-[#1A362E] text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg hover:opacity-90 transition-all"
+                      >
+                         <Plus className="w-4 h-4" /> New Reservation
+                      </button>
+                   </div>
+                   {reservations.length === 0 ? (
+                      <p className="text-center py-20 text-gray-300 italic">No scheduled reservations.</p>
+                   ) : reservations.map(res => (
                       <div key={res.id} className="bg-white p-8 rounded-[32px] border border-gray-50 flex items-center gap-8 shadow-sm">
                          <div className="w-20 flex flex-col items-center justify-center border-r border-gray-100 pr-8">
                             <p className="text-xs font-black text-gray-400 uppercase">{new Date(res.dateTime).toLocaleDateString('en-US', {month:'short'})}</p>
-                            <p className="text-2xl font-black text-gray-900">{new Date(res.dateTime).getDate()}</p>
+                            <p className="text-2xl font-black text-gray-900 num-clean">{new Date(res.dateTime).getDate()}</p>
                          </div>
                          <div className="flex-1">
                             <h5 className="text-lg font-black text-gray-900 mb-1">{res.serviceType}</h5>
-                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{new Date(res.dateTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} — {res.therapistName}</p>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest num-clean">{new Date(res.dateTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} — {res.therapistName}</p>
                          </div>
                       </div>
                    ))}
-                   <button className="w-full py-8 border-2 border-dashed border-gray-100 rounded-[32px] text-gray-300 hover:border-black hover:text-black transition-all flex flex-col items-center gap-3">
-                      <Plus className="w-6 h-6" />
-                      <span className="text-xs font-black uppercase tracking-widest">Schedule New Session</span>
-                   </button>
                 </div>
              )}
            </div>
         </div>
       </div>
+
+      {/* Reservation Modal */}
+      {isResModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+           <div className="bg-white w-full max-w-lg rounded-[40px] p-12 shadow-2xl animate-in zoom-in-95">
+              <div className="flex justify-between items-center mb-10">
+                 <h2 className="text-2xl font-serif font-bold text-gray-900 uppercase tracking-wider">Schedule Session</h2>
+                 <button onClick={() => setIsResModalOpen(false)}><X className="w-6 h-6 text-gray-300" /></button>
+              </div>
+              <div className="space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Specialist</label>
+                    <select 
+                      value={newRes.therapistId} 
+                      onChange={e => setNewRes({...newRes, therapistId: e.target.value})}
+                      className="w-full p-4 bg-gray-50 rounded-xl font-bold outline-none border border-transparent focus:border-hannam-gold"
+                    >
+                       <option value="">담당 테라피스트 선택</option>
+                       {therapists.map(t => <option key={t.id} value={t.id}>{t.name} ({t.specialty})</option>)}
+                    </select>
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Date & Time</label>
+                    <input 
+                      type="datetime-local" 
+                      value={newRes.dateTime} 
+                      onChange={e => setNewRes({...newRes, dateTime: e.target.value})}
+                      className="w-full p-4 bg-gray-50 rounded-xl font-bold outline-none border border-transparent focus:border-hannam-gold" 
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Program Type</label>
+                    <input 
+                      type="text" 
+                      placeholder="예: VIP Hydro Therapy" 
+                      value={newRes.serviceType} 
+                      onChange={e => setNewRes({...newRes, serviceType: e.target.value})}
+                      className="w-full p-4 bg-gray-50 rounded-xl font-bold outline-none border border-transparent focus:border-hannam-gold" 
+                    />
+                 </div>
+                 <button 
+                   onClick={handleCreateReservation}
+                   className="w-full py-5 bg-[#1A362E] text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-xl mt-6"
+                 >
+                    Confirm Reservation
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };
