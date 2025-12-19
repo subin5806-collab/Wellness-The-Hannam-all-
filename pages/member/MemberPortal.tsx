@@ -2,20 +2,16 @@
 import React, { useEffect, useState } from 'react';
 import { dbService } from '../../services/dbService';
 import { authService } from '../../services/authService';
-import { Member, CareRecord, Reservation, CareStatus, Therapist } from '../../types';
+import { Member, CareRecord, Reservation, CareStatus, MemberTier } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { 
   LayoutGrid, 
-  MessageSquare, 
-  User, 
   LogOut, 
-  ChevronRight,
-  Clock,
-  Sparkles,
   RefreshCw,
-  Calendar,
-  Plus,
-  X
+  Clock,
+  FileText,
+  ChevronRight,
+  Info
 } from 'lucide-react';
 import { SignaturePad } from '../../components/SignaturePad';
 
@@ -23,13 +19,9 @@ export const MemberPortal: React.FC = () => {
   const [member, setMember] = useState<Member | null>(null);
   const [history, setHistory] = useState<CareRecord[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [therapists, setTherapists] = useState<Therapist[]>([]);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'notes' | 'concierge'>('dashboard');
   const [pendingRecord, setPendingRecord] = useState<CareRecord | null>(null);
+  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'notes'>('home');
   
-  // Modals & Forms
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [bookingForm, setBookingForm] = useState({ therapistId: '', dateTime: '', serviceType: 'Premium Wellness Therapy' });
   const [signature, setSignature] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -46,17 +38,14 @@ export const MemberPortal: React.FC = () => {
 
   const loadMemberData = async () => {
     if (!currentUser) return;
-    const [m, th] = await Promise.all([
+    const [m, h, r] = await Promise.all([
       dbService.getMemberById(currentUser.id),
-      dbService.getTherapists()
+      dbService.getMemberCareHistory(currentUser.id),
+      dbService.getReservations(currentUser.id)
     ]);
+
     if (m) {
       setMember(m);
-      setTherapists(th);
-      const [h, r] = await Promise.all([
-        dbService.getMemberCareHistory(m.id),
-        dbService.getReservations(m.id)
-      ]);
       setHistory(h);
       setReservations(r);
       const pending = h.find(rec => rec.status === CareStatus.WAITING_SIGNATURE);
@@ -64,270 +53,290 @@ export const MemberPortal: React.FC = () => {
     }
   };
 
-  const handleBookingSubmit = async () => {
-    if (!member || !bookingForm.therapistId || !bookingForm.dateTime) return alert('전문가와 시간을 선택해주세요.');
-    const therapist = therapists.find(t => t.id === bookingForm.therapistId);
-    
-    await dbService.createReservation({
-      memberId: member.id,
-      memberName: member.name,
-      therapistId: bookingForm.therapistId,
-      therapistName: therapist?.name || 'Unknown',
-      dateTime: bookingForm.dateTime,
-      serviceType: bookingForm.serviceType
-    });
-    
-    alert('예약이 정상적으로 신청되었습니다.');
-    setIsBookingModalOpen(false);
-    loadMemberData();
-  };
-
   const handleSignComplete = async () => {
     if (!pendingRecord || !signature) return;
     setIsProcessing(true);
-    await dbService.signCareRecord(pendingRecord.id, signature);
-    setPendingRecord(null);
-    setSignature('');
-    await loadMemberData();
-    setIsProcessing(false);
+    try {
+      await dbService.signCareRecord(pendingRecord.id, signature);
+      alert('결제 승인이 완료되었습니다.');
+      setPendingRecord(null);
+      setSignature('');
+      await loadMemberData();
+    } catch (e) {
+      alert('처리 중 오류가 발생했습니다.');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  if (!member) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold tracking-[0.4em] uppercase">WELLNESS, THE HANNAM...</div>;
+  const getWeeklyReservations = () => {
+    const today = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(today.getDate() + 7);
+    return reservations.filter(res => {
+      const resDate = new Date(res.dateTime);
+      return resDate >= today && resDate <= nextWeek && res.status === 'booked';
+    });
+  };
+
+  const getTierInfo = (tier: MemberTier) => {
+    switch (tier) {
+      case MemberTier.ROYAL: return { discount: '20%', next: null, target: 0 };
+      case MemberTier.GOLD: return { discount: '15%', next: MemberTier.ROYAL, target: 10000000 };
+      default: return { discount: '10%', next: MemberTier.GOLD, target: 5000000 };
+    }
+  };
+
+  if (!member) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-widest text-xs">Loading Hannam Portal...</div>;
+
+  const tierInfo = getTierInfo(member.tier);
 
   return (
-    <div className="min-h-screen bg-hannam-bg font-sans text-hannam-text pb-20">
-      {/* Top Utility Nav */}
-      <header className="px-8 py-3 flex justify-between items-center border-b border-hannam-border bg-white">
-        <div className="flex items-center gap-4">
-           <div className="w-8 h-8 bg-hannam-green rounded-full flex items-center justify-center text-white text-[8px] font-bold">Logo</div>
-           <div className="flex flex-col">
-             <h1 className="text-sm font-bold tracking-wider leading-none">THE HANNAM</h1>
-             <p className="text-[10px] text-hannam-gold font-medium mt-1">Welcome, <span className="font-bold">{member.name} Member.</span></p>
-           </div>
+    <div className="min-h-screen bg-[#FDFDFD] font-sans text-hannam-text pb-32">
+      {/* Header */}
+      <header className="px-6 py-5 flex justify-between items-center bg-white sticky top-0 z-[60] border-b border-gray-100 shadow-sm">
+        <div className="flex flex-col">
+          <h1 className="text-[11px] font-serif font-bold tracking-[0.2em] text-hannam-green uppercase">WELLNESS, THE HANNAM</h1>
+          <p className="text-[9px] text-hannam-gold font-bold uppercase tracking-widest">Private Member Console</p>
         </div>
-        <div className="flex items-center gap-4">
-           <button onClick={loadMemberData} className="flex items-center gap-2 px-3 py-1.5 border border-hannam-border rounded-full text-[10px] text-hannam-subtext font-medium hover:bg-hannam-gray-bg transition-colors">
-             <RefreshCw className="w-3 h-3" /> Refresh
-           </button>
-           <button onClick={() => { authService.logout(); navigate('/'); }} className="text-hannam-subtext hover:text-red-500 transition-colors">
-             <LogOut className="w-4 h-4" />
-           </button>
+        <div className="flex items-center gap-2">
+           <button onClick={loadMemberData} className="p-2 text-gray-300 active:scale-95 transition-transform"><RefreshCw className="w-4 h-4" /></button>
+           <div className="w-8 h-8 bg-hannam-green rounded-lg flex items-center justify-center text-white text-[11px] font-serif">{member.name[0]}</div>
         </div>
       </header>
 
-      {/* Main Brand Header */}
-      <section className="text-center py-16 animate-fade-in">
-        <h2 className="text-4xl font-serif font-medium tracking-[0.2em] text-hannam-green mb-3 uppercase">WELLNESS, THE HANNAM</h2>
-        <p className="text-[10px] font-medium text-hannam-subtext uppercase tracking-[0.5em] mb-4">PRIVATE WELL-AGING CENTER</p>
-      </section>
-
-      {/* Main Tab Navigation */}
-      <nav className="flex justify-center gap-12 mb-16 border-t border-hannam-border pt-6">
-        {[
-          { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
-          { id: 'notes', label: 'Care Notes', icon: MessageSquare },
-          { id: 'concierge', label: 'AI Concierge', icon: Sparkles },
-        ].map(item => (
-          <button 
-            key={item.id}
-            onClick={() => setActiveTab(item.id as any)}
-            className={`flex items-center gap-2.5 px-2 pb-2 text-[11px] font-bold tracking-wider transition-all border-b-2 ${
-              activeTab === item.id ? 'border-hannam-green text-hannam-green' : 'border-transparent text-hannam-subtext hover:text-hannam-text'
-            }`}
-          >
-            <item.icon className={`w-4 h-4 ${activeTab === item.id ? 'text-hannam-gold' : 'text-hannam-gold opacity-50'}`} />
-            {item.label}
-          </button>
-        ))}
-      </nav>
-
-      <main className="max-w-6xl mx-auto px-6">
-         {activeTab === 'dashboard' && (
-           <div className="space-y-8 animate-fade-in">
-              {/* Membership & Benefits Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                 <div className="membership-card rounded-xl p-10 text-white flex flex-col justify-between h-[300px]">
+      <main className="px-5 py-6 space-y-8 max-w-lg mx-auto">
+        
+        {activeTab === 'home' && (
+          <div className="space-y-8 animate-fade-in">
+            {/* 1. 싸인 알람 (Signature Pending) - 최상단 고정 */}
+            {pendingRecord && (
+              <section>
+                <div className="bg-white rounded-2xl shadow-xl border border-red-50 p-6 space-y-5">
+                  <div className="flex justify-between items-start">
                     <div>
-                       <p className="text-[11px] font-medium text-white/60 mb-2 uppercase tracking-widest">Remaining Membership Limit</p>
-                       <h3 className="text-5xl font-serif leading-tight">₩{member.remaining.toLocaleString()}</h3>
+                      <h2 className="text-lg font-bold text-red-600 leading-tight">결제 승인 대기</h2>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Authorization Required</p>
                     </div>
-                    <div className="flex gap-12 border-t border-white/10 pt-6">
-                       <div>
-                          <p className="text-[9px] font-bold text-white/40 uppercase mb-1 tracking-widest">Total Deposit</p>
-                          <p className="text-sm font-medium num-clean">₩{member.deposit.toLocaleString()}</p>
-                       </div>
-                       <div>
-                          <p className="text-[9px] font-bold text-white/40 uppercase mb-1 tracking-widest">Total Usage</p>
-                          <p className="text-sm font-medium num-clean">₩{member.used.toLocaleString()}</p>
-                       </div>
+                    <span className="bg-red-500 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded">URGENT</span>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 flex justify-between items-center border border-gray-100">
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-slate-900">{pendingRecord.content}</p>
+                      <p className="text-[10px] text-gray-400 font-medium">{pendingRecord.date} • {pendingRecord.therapistName}</p>
                     </div>
-                 </div>
-
-                 <div className="card-minimal p-10 flex flex-col justify-center">
-                    <h4 className="text-xl font-serif text-hannam-green mb-8">Membership Status</h4>
-                    <div className="flex items-center gap-4 mb-6">
-                       <span className="text-2xl font-bold text-hannam-text">{member.tier} Tier Member</span>
-                    </div>
-                    <p className="text-[13px] text-hannam-subtext leading-relaxed">
-                       Wellness, The Hannam의 프라이빗 멤버십 회원입니다. 전담 전문가의 맞춤 관리를 통해 당신의 가치를 더 높여드립니다.
-                    </p>
-                 </div>
-              </div>
-
-              {/* Pending Signature Section */}
-              {pendingRecord && (
-                <div className="bg-white p-8 rounded-xl border border-hannam-gold shadow-lg animate-fade-in">
-                   <div className="flex justify-between items-center mb-6">
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-5 h-5 text-hannam-gold" />
-                        <h4 className="text-lg font-serif text-hannam-green">Confirm Today's Session</h4>
-                      </div>
-                      <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest bg-red-50 px-3 py-1 rounded border border-red-100">Signature Required</span>
-                   </div>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                      <div className="bg-hannam-gray-bg p-6 rounded-lg flex flex-col justify-center border border-hannam-border">
-                         <h5 className="text-lg font-bold text-hannam-text mb-1">{pendingRecord.content}</h5>
-                         <p className="text-xs text-hannam-subtext mb-4">Expert: {pendingRecord.therapistName}</p>
-                         <div className="flex justify-between items-baseline pt-4 border-t border-hannam-border">
-                            <span className="text-xs text-hannam-subtext font-medium">Session Value</span>
-                            <span className="text-2xl font-serif text-hannam-green">₩{pendingRecord.discountedPrice.toLocaleString()}</span>
-                         </div>
-                      </div>
-                      <div className="h-[220px]">
-                         <SignaturePad onSave={setSignature} onClear={() => setSignature('')} />
-                      </div>
-                   </div>
-                   <button 
-                     onClick={handleSignComplete}
-                     disabled={!signature || isProcessing}
-                     className="w-full py-4 btn-primary rounded-lg text-xs font-bold uppercase tracking-[0.2em] shadow-lg disabled:opacity-50"
-                   >
-                     {isProcessing ? 'Processing...' : 'Complete Verification'}
-                   </button>
+                    <p className="text-base font-black text-red-600 num-clean">-₩{pendingRecord.discountedPrice.toLocaleString()}</p>
+                  </div>
+                  <div className="h-44 bg-white rounded-xl border border-gray-200 overflow-hidden relative">
+                    <SignaturePad onSave={setSignature} onClear={() => setSignature('')} />
+                  </div>
+                  <button 
+                    onClick={handleSignComplete}
+                    disabled={!signature || isProcessing}
+                    className={`w-full py-4.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                      signature ? 'bg-hannam-green text-white shadow-lg' : 'bg-gray-100 text-gray-300'
+                    }`}
+                  >
+                    {isProcessing ? 'Processing...' : '서명 후 결제 승인'}
+                  </button>
                 </div>
-              )}
+              </section>
+            )}
 
-              {/* Schedule Section */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                 <div className="card-minimal p-10 flex flex-col">
-                    <div className="flex justify-between items-center mb-8">
-                       <div className="flex items-center gap-3">
-                          <div className="w-1 h-6 bg-hannam-gold rounded-full" />
-                          <h4 className="text-xl font-serif text-hannam-green">Upcoming Schedule</h4>
-                       </div>
-                       <button 
-                         onClick={() => setIsBookingModalOpen(true)}
-                         className="flex items-center gap-1.5 px-3 py-1.5 bg-hannam-green text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all"
-                       >
-                          <Plus className="w-3.5 h-3.5" /> Book Now
-                       </button>
-                    </div>
-                    <div className="space-y-4 flex-1">
-                       {reservations.length > 0 ? reservations.slice(0, 3).map(res => (
-                         <div key={res.id} className="bg-hannam-gray-bg p-6 rounded-lg border border-hannam-border">
-                            <h5 className="text-base font-bold text-hannam-text mb-1">{res.serviceType}</h5>
-                            <p className="text-xs text-hannam-gold font-medium num-clean uppercase mb-4">
-                              {new Date(res.dateTime).toLocaleString('en-US', { month: 'short', day: 'numeric', weekday: 'short', hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                            <p className="text-[11px] font-medium text-hannam-subtext">Expert: {res.therapistName}</p>
-                         </div>
-                       )) : <p className="text-hannam-subtext italic text-xs py-10 text-center">No scheduled sessions.</p>}
-                    </div>
-                 </div>
-
-                 <div className="card-minimal p-10 flex flex-col">
-                    <div className="flex items-center gap-3 mb-8">
-                       <div className="w-1 h-6 bg-hannam-gold rounded-full" />
-                       <h4 className="text-xl font-serif text-hannam-green">Wellness AI Focus</h4>
-                    </div>
-                    <div className="space-y-6 flex-1">
-                       <div className="flex justify-between items-center border-b border-hannam-border pb-4">
-                          <p className="text-sm font-medium text-hannam-text">Personal Goal</p>
-                          <p className="text-sm font-bold text-hannam-subtext">{member.coreGoal}</p>
-                       </div>
-                       <div className="flex justify-between items-center border-b border-hannam-border pb-4">
-                          <p className="text-sm font-medium text-hannam-text">AI Recommendation</p>
-                          <p className="text-sm font-bold text-hannam-gold">{member.aiRecommended}</p>
-                       </div>
-                    </div>
-                    <button className="w-full mt-8 py-4 bg-hannam-gray-bg text-hannam-subtext rounded-lg text-[11px] font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                       <Sparkles className="w-4 h-4 text-hannam-gold" /> AI Concierge Sync
-                    </button>
-                 </div>
+            {/* 2. 멤버십 한도 카드 (이미지 1 스타일 반영) */}
+            <section>
+              <div className="bg-hannam-green rounded-2xl p-8 text-white min-h-[200px] flex flex-col justify-between shadow-2xl relative overflow-hidden">
+                <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mb-16" />
+                <div>
+                  <p className="text-[12px] font-medium text-white/70 mb-4 tracking-tight">Remaining Membership Limit</p>
+                  <h3 className="text-5xl font-serif font-medium tracking-tight">
+                    <span className="text-3xl mr-1">₩</span>
+                    {member.remaining.toLocaleString()}
+                  </h3>
+                </div>
+                <div className="flex gap-12 pt-6 border-t border-white/10 mt-6">
+                  <div>
+                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mb-1">Total Deposit</p>
+                    <p className="text-[15px] font-medium num-clean">₩{member.deposit.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mb-1">Total Usage</p>
+                    <p className="text-[15px] font-medium num-clean text-red-400">₩{member.used.toLocaleString()}</p>
+                  </div>
+                </div>
               </div>
-           </div>
-         )}
+            </section>
 
-         {/* Rest of the tabs remain same ... */}
-         {activeTab === 'notes' && (
-           <div className="animate-fade-in grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {history.map((note) => (
-                 <div key={note.id} className="card-minimal p-8 flex flex-col h-[300px] hover:border-hannam-gold group transition-all">
-                    <div className="flex justify-between items-center mb-6">
-                       <span className="bg-hannam-gray-bg px-3 py-1 rounded text-[9px] font-bold text-hannam-subtext border border-hannam-border uppercase">{note.status}</span>
-                       <span className="text-[11px] font-bold text-hannam-subtext num-clean">{note.date}</span>
-                    </div>
-                    <p className="text-sm font-serif italic text-hannam-text leading-relaxed mb-6 flex-1 line-clamp-4">
-                       "{note.feedback || '세션 진행이 완료되었습니다.'}"
-                    </p>
-                    <div className="pt-6 border-t border-hannam-border">
-                       <p className="text-[10px] font-bold text-hannam-gold uppercase mb-2 tracking-widest">Recommendation</p>
-                       <p className="text-xs text-hannam-subtext font-medium leading-tight">{note.recommendation}</p>
-                    </div>
+            {/* 3. 멤버십 혜택 현황 (이미지 2 스타일 반영) */}
+            <section className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm space-y-6">
+               <h4 className="text-xl font-serif font-bold text-hannam-green border-b border-gray-50 pb-4">Membership Benefits</h4>
+               <div className="flex items-center gap-3">
+                  <h5 className="text-2xl font-bold text-slate-800">{member.tier} Tier</h5>
+                  <span className="bg-green-50 text-hannam-green text-[10px] font-black uppercase px-3 py-1.5 rounded-md border border-green-100">
+                    {tierInfo.discount} Discount Applied
+                  </span>
+               </div>
+               {tierInfo.next && (
+                 <div className="space-y-4">
+                   <p className="text-[13px] text-slate-600 leading-relaxed font-medium">
+                     Deposit an additional <span className="font-bold text-slate-900 num-clean">₩{(tierInfo.target - member.deposit).toLocaleString()}</span> to upgrade to the next tier with <span className="font-bold text-slate-900">20% discount</span> benefits.
+                   </p>
+                   <p className="text-[10px] text-slate-300 leading-relaxed italic">
+                     Note: Discount rates are calculated based on cumulative deposits and are automatically applied to all services and product payments.
+                   </p>
                  </div>
-              ))}
-           </div>
-         )}
+               )}
+            </section>
+
+            {/* 4. 금주 예약 일정 (스크롤 시 노출) */}
+            <section className="space-y-4">
+               <div className="flex justify-between items-end px-1">
+                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Weekly Schedule</h3>
+                  <button onClick={() => setActiveTab('history')} className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">View All</button>
+               </div>
+               <div className="space-y-3">
+                  {getWeeklyReservations().length > 0 ? getWeeklyReservations().map(res => (
+                    <div key={res.id} className="bg-white border border-gray-100 p-5 rounded-xl flex items-center gap-4 shadow-sm">
+                       <div className="w-10 h-10 bg-gray-50 rounded-lg flex flex-col items-center justify-center">
+                          <span className="text-[8px] font-black text-gray-300 uppercase">{new Date(res.dateTime).toLocaleDateString('ko-KR', {month:'short'})}</span>
+                          <span className="text-sm font-black text-hannam-green num-clean leading-none">{new Date(res.dateTime).getDate()}</span>
+                       </div>
+                       <div className="flex-1">
+                          <p className="text-xs font-bold text-gray-900">{res.serviceType}</p>
+                          <p className="text-[10px] text-gray-400 font-medium">{new Date(res.dateTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} • {res.therapistName}</p>
+                       </div>
+                       <ChevronRight className="w-4 h-4 text-gray-200" />
+                    </div>
+                  )) : (
+                    <div className="py-8 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                       <p className="text-[11px] text-gray-300 font-medium italic">예정된 일정이 없습니다.</p>
+                    </div>
+                  )}
+               </div>
+            </section>
+
+            {/* 5. 최근 케어 노트 요약 (3개) */}
+            <section className="space-y-4">
+               <div className="flex justify-between items-end px-1">
+                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Recent Care Notes</h3>
+                  <button onClick={() => setActiveTab('notes')} className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">Archive</button>
+               </div>
+               <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+                  {history.filter(h => h.status === CareStatus.COMPLETED).slice(0, 3).map(note => (
+                    <div key={note.id} className="min-w-[280px] bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-4">
+                       <div className="flex justify-between items-center">
+                          <span className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">{note.date}</span>
+                          <span className="text-[9px] font-bold text-gray-300">{note.therapistName}</span>
+                       </div>
+                       <h4 className="text-xs font-bold text-gray-900 line-clamp-1">{note.content}</h4>
+                       <p className="text-[11px] text-gray-500 italic line-clamp-2 leading-relaxed">"{note.feedback || '세션 완료'}"</p>
+                    </div>
+                  ))}
+                  {history.filter(h => h.status === CareStatus.COMPLETED).length === 0 && (
+                     <div className="w-full py-10 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                        <p className="text-[11px] text-gray-300 font-medium italic">기록된 케어 노트가 없습니다.</p>
+                     </div>
+                  )}
+               </div>
+            </section>
+
+            {/* 6. 다음 추천 관리 (관리자 설정값 노출) */}
+            <section className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+               <div className="flex items-center gap-2 mb-4">
+                  <Info className="w-3.5 h-3.5 text-hannam-gold" />
+                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Personal Wellness Plan</h4>
+               </div>
+               <div className="space-y-4">
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 mb-1">Focus Goal</p>
+                    <p className="text-xs font-bold text-slate-900">{member.coreGoal || '설정된 목표가 없습니다.'}</p>
+                  </div>
+                  <div className="pt-3 border-t border-gray-200">
+                    <p className="text-[10px] font-bold text-hannam-gold mb-1">Recommended Next Care</p>
+                    <p className="text-xs font-bold text-hannam-green">{member.aiRecommended || '담당자 추천 대기 중'}</p>
+                  </div>
+               </div>
+            </section>
+
+            {/* 로그아웃 버튼 (홈 화면 최하단에 단 한 번만 노출) */}
+            <div className="pt-16 pb-6 text-center">
+              <button 
+                onClick={() => { if(confirm('로그아웃 하시겠습니까?')) { authService.logout(); navigate('/'); } }}
+                className="text-[10px] font-bold text-gray-300 uppercase tracking-widest hover:text-red-400 transition-colors flex items-center justify-center gap-1.5 mx-auto"
+              >
+                <LogOut className="w-3 h-3" /> Logout from Portal
+              </button>
+              <p className="text-[8px] text-gray-200 mt-2 uppercase tracking-widest font-bold">WELLNESS, THE HANNAM v2.5</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="space-y-6 animate-fade-in">
+             <h3 className="text-lg font-serif font-bold text-hannam-green border-b border-gray-100 pb-3 uppercase tracking-wider">Reservation History</h3>
+             <div className="space-y-4">
+                {history.map(item => (
+                   <div key={item.id} className="bg-white p-5 rounded-xl border border-gray-100 flex justify-between items-center shadow-sm">
+                      <div className="space-y-1">
+                         <p className="text-xs font-bold text-slate-900">{item.content}</p>
+                         <p className="text-[10px] text-gray-400 font-medium">{item.date} • {item.therapistName}</p>
+                      </div>
+                      <div className="text-right">
+                         <p className="text-sm font-black text-slate-900 num-clean">₩{item.discountedPrice.toLocaleString()}</p>
+                         <span className={`text-[8px] font-black uppercase tracking-widest ${item.status === CareStatus.COMPLETED ? 'text-hannam-green' : 'text-amber-500'}`}>
+                           {item.status}
+                         </span>
+                      </div>
+                   </div>
+                ))}
+                {history.length === 0 && <p className="py-20 text-center text-[11px] text-gray-300 italic">내역이 없습니다.</p>}
+             </div>
+          </div>
+        )}
+
+        {activeTab === 'notes' && (
+          <div className="space-y-6 animate-fade-in">
+             <h3 className="text-lg font-serif font-bold text-hannam-green border-b border-gray-100 pb-3 uppercase tracking-wider">Care Notes Archive</h3>
+             <div className="space-y-5">
+                {history.filter(h => h.status === CareStatus.COMPLETED).map(note => (
+                   <div key={note.id} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4 shadow-sm">
+                      <div className="flex justify-between items-center">
+                         <span className="px-2.5 py-1 bg-gray-50 text-gray-400 rounded-md text-[9px] font-black uppercase tracking-widest">{note.content}</span>
+                         <span className="text-[10px] font-bold text-gray-300 num-clean">{note.date}</span>
+                      </div>
+                      <p className="text-xs font-medium text-gray-600 leading-relaxed italic">
+                         "{note.feedback || '세션 완료'}"
+                      </p>
+                      <div className="bg-[#FBF9F6] p-4 rounded-xl space-y-1.5 border border-hannam-gold/10">
+                         <p className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">Recommended Therapy</p>
+                         <p className="text-[11px] font-bold text-gray-500">{note.recommendation}</p>
+                      </div>
+                      <p className="text-right text-[9px] font-bold text-gray-300 uppercase tracking-widest">- {note.therapistName}</p>
+                   </div>
+                ))}
+                {history.filter(h => h.status === CareStatus.COMPLETED).length === 0 && <p className="py-20 text-center text-[11px] text-gray-300 italic">작성된 케어 노트가 없습니다.</p>}
+             </div>
+          </div>
+        )}
       </main>
 
-      {/* Booking Modal */}
-      {isBookingModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-           <div className="bg-white w-full max-w-lg rounded-[40px] p-12 shadow-2xl animate-in zoom-in-95">
-              <div className="flex justify-between items-center mb-10">
-                 <h2 className="text-2xl font-serif font-bold text-gray-900 uppercase tracking-wider">New Appointment</h2>
-                 <button onClick={() => setIsBookingModalOpen(false)}><X className="w-6 h-6 text-gray-300" /></button>
-              </div>
-              <div className="space-y-6">
-                 <div>
-                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Select Expert</label>
-                    <select 
-                      value={bookingForm.therapistId} 
-                      onChange={e => setBookingForm({...bookingForm, therapistId: e.target.value})}
-                      className="w-full p-4 bg-gray-50 rounded-xl font-bold text-xs outline-none border border-transparent focus:border-hannam-gold"
-                    >
-                       <option value="">스탭을 선택하세요</option>
-                       {therapists.map(t => <option key={t.id} value={t.id}>{t.name} ({t.specialty})</option>)}
-                    </select>
-                 </div>
-                 <div>
-                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Date & Time</label>
-                    <input 
-                      type="datetime-local" 
-                      value={bookingForm.dateTime} 
-                      onChange={e => setBookingForm({...bookingForm, dateTime: e.target.value})}
-                      className="w-full p-4 bg-gray-50 rounded-xl font-bold text-xs outline-none" 
-                    />
-                 </div>
-                 <div>
-                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Session Type</label>
-                    <input 
-                      type="text" 
-                      value={bookingForm.serviceType} 
-                      onChange={e => setBookingForm({...bookingForm, serviceType: e.target.value})}
-                      className="w-full p-4 bg-gray-50 rounded-xl font-bold text-xs outline-none" 
-                    />
-                 </div>
-                 <button 
-                   onClick={handleBookingSubmit}
-                   className="w-full py-5 bg-[#1A362E] text-white rounded-xl text-[11px] font-bold uppercase tracking-widest shadow-xl mt-4"
-                 >
-                    Confirm Appointment
-                 </button>
-              </div>
-           </div>
-        </div>
-      )}
+      {/* Floating Navigation Bar: 홈 / 예약 내역 / 케어 노트 */}
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-hannam-green text-white px-8 py-4 rounded-2xl shadow-2xl flex justify-between items-center z-[100] border border-white/5 backdrop-blur-md bg-opacity-95">
+         {[
+           { id: 'home', icon: LayoutGrid, label: 'Home' },
+           { id: 'history', icon: Clock, label: 'History' },
+           { id: 'notes', icon: FileText, label: 'Care Notes' }
+         ].map(item => (
+           <button 
+             key={item.id}
+             onClick={() => setActiveTab(item.id as any)}
+             className={`flex flex-col items-center gap-1.5 transition-all active:scale-90 ${activeTab === item.id ? 'text-hannam-gold' : 'text-white/30'}`}
+           >
+              <item.icon className="w-5 h-5" />
+              <span className="text-[9px] font-bold uppercase tracking-widest whitespace-nowrap">{item.label}</span>
+           </button>
+         ))}
+      </nav>
     </div>
   );
 };
