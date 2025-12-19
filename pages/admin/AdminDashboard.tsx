@@ -44,7 +44,6 @@ export const AdminDashboard: React.FC = () => {
       await dbService.updateTemplate(editingTemplate.id, { title: newTemplateTitle });
       alert('상품 정보가 수정되었습니다.');
     } else {
-      // 신규 등록 로직 (간이 등록)
       await dbService.saveTemplate({
         title: newTemplateTitle,
         type: 'MEMBERSHIP',
@@ -116,7 +115,6 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-12 gap-8 mb-12">
-          {/* Main Content Area - Schedule */}
           <div className="col-span-8 card-minimal p-10">
             <div className="flex justify-between items-center mb-10">
               <div className="flex items-center gap-3">
@@ -153,7 +151,6 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Sidebar Area - Insights */}
           <div className="col-span-4 space-y-8">
              <div className="card-minimal p-8">
                 <div className="flex items-center gap-3 mb-8">
@@ -199,7 +196,6 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* NEW SECTION: System Membership Configuration */}
         <section className="card-minimal p-10 animate-fade-in border-t-4 border-t-hannam-gold">
            <div className="flex justify-between items-center mb-10">
               <div className="flex items-center gap-3">
@@ -244,7 +240,6 @@ export const AdminDashboard: React.FC = () => {
         </section>
       </div>
 
-      {/* Membership Setting Modal */}
       {isSettingModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
            <form onSubmit={handleSaveTemplate} className="bg-white w-full max-w-md rounded-[40px] p-12 shadow-2xl animate-in zoom-in-95">
@@ -259,7 +254,7 @@ export const AdminDashboard: React.FC = () => {
               </div>
               <div className="space-y-8">
                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Plan Name (상품명)</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Plan Name (상품명)</label>
                     <input 
                       type="text" 
                       value={newTemplateTitle} 
@@ -270,7 +265,7 @@ export const AdminDashboard: React.FC = () => {
                     />
                  </div>
                  <p className="text-[9px] text-gray-300 italic">
-                   * 신규 등록 시 기본 계약서 양식이 자동 할당됩니다. 상세 PDF 파일 업로드는 'Contracts > 템플릿 관리' 메뉴에서 가능합니다.
+                   * 신규 등록 시 기본 계약서 양식이 자동 할당됩니다. 상세 PDF 파일 업로드는 'Contracts &gt; 템플릿 관리' 메뉴에서 가능합니다.
                  </p>
                  <button type="submit" className="w-full py-5 bg-[#1A362E] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl hover:bg-black transition-all">
                     {editingTemplate ? '수정 완료' : '신규 상품 등록'}
