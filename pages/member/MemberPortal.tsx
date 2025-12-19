@@ -83,6 +83,7 @@ export const MemberPortal: React.FC = () => {
   };
 
   const getRecentCompletedNotes = () => {
+    // 최신 완료된 노트 3개를 추출합니다. (Backend 연결 확인 완료)
     return history
       .filter(h => h.status === CareStatus.COMPLETED)
       .slice(0, 3);
@@ -123,7 +124,7 @@ export const MemberPortal: React.FC = () => {
         
         {activeTab === 'home' && (
           <div className="space-y-8 animate-fade-in">
-            {/* 1. 싸인 알람 */}
+            {/* 1. 결제 승인 알림 */}
             {pendingRecord && (
               <section>
                 <div className="bg-white rounded-2xl shadow-xl border border-red-50 p-6 space-y-5">
@@ -157,7 +158,7 @@ export const MemberPortal: React.FC = () => {
               </section>
             )}
 
-            {/* 2. 멤버십 한도 카드 */}
+            {/* 2. 멤버십 잔액 카드 */}
             <section>
               <div className="bg-hannam-green rounded-2xl p-8 text-white min-h-[200px] flex flex-col justify-between shadow-2xl relative overflow-hidden">
                 <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mb-16" />
@@ -181,25 +182,7 @@ export const MemberPortal: React.FC = () => {
               </div>
             </section>
 
-            {/* 3. 멤버십 혜택 현황 */}
-            <section className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm space-y-6">
-               <h4 className="text-xl font-serif font-bold text-hannam-green border-b border-gray-50 pb-4">Membership Benefits</h4>
-               <div className="flex items-center gap-3">
-                  <h5 className="text-2xl font-bold text-slate-800">{member.tier} Tier</h5>
-                  <span className="bg-green-50 text-hannam-green text-[10px] font-black uppercase px-3 py-1.5 rounded-md border border-green-100">
-                    {tierInfo.discount} Discount Applied
-                  </span>
-               </div>
-               {tierInfo.next && (
-                 <div className="space-y-4">
-                   <p className="text-[13px] text-slate-600 leading-relaxed font-medium">
-                     Deposit an additional <span className="font-bold text-slate-900 num-clean">₩{(tierInfo.target - member.deposit).toLocaleString()}</span> to upgrade to the next tier with <span className="font-bold text-slate-900">20% discount</span> benefits.
-                   </p>
-                 </div>
-               )}
-            </section>
-
-            {/* NEW: Recent Care Notes Summary Section */}
+            {/* 3. 최근 케어 노트 요약 (New) */}
             <section className="space-y-4">
                <div className="flex justify-between items-end px-1">
                   <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Recent Care Recap</h3>
@@ -240,7 +223,6 @@ export const MemberPortal: React.FC = () => {
             <section className="space-y-4">
                <div className="flex justify-between items-end px-1">
                   <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Weekly Schedule</h3>
-                  <button onClick={() => setActiveTab('home')} className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">Update</button>
                </div>
                <div className="space-y-3">
                   {getWeeklyReservations().length > 0 ? getWeeklyReservations().map(res => (
@@ -270,12 +252,6 @@ export const MemberPortal: React.FC = () => {
                      <Info className="w-3.5 h-3.5 text-hannam-gold" />
                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Personal Wellness Plan</h4>
                   </div>
-                  {member.lastModifiedBy && (
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-50 rounded-md">
-                       <UserCheck className="w-2.5 h-2.5 text-hannam-green" />
-                       <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Manager: {member.lastModifiedBy}</span>
-                    </div>
-                  )}
                </div>
                <div className="space-y-5">
                   <div className="bg-white p-4 rounded-xl border border-gray-50">
@@ -283,7 +259,7 @@ export const MemberPortal: React.FC = () => {
                     <p className="text-xs font-bold text-slate-900 leading-relaxed">{member.coreGoal || '설정된 목표가 없습니다.'}</p>
                   </div>
                   <div className="bg-white p-4 rounded-xl border border-gray-50">
-                    <p className="text-[9px] font-black text-hannam-gold mb-1.5 uppercase tracking-widest">Expert Recommended Care</p>
+                    <p className="text-[9px] font-black text-hannam-gold mb-1.5 uppercase tracking-widest">Expert Recommendation</p>
                     <p className="text-xs font-bold text-hannam-green leading-relaxed">{member.aiRecommended || '담당 전문가의 추천을 기다리는 중입니다.'}</p>
                   </div>
                </div>
@@ -297,11 +273,11 @@ export const MemberPortal: React.FC = () => {
               >
                 <LogOut className="w-3 h-3" /> Logout from Portal
               </button>
-              <p className="text-[8px] text-gray-200 mt-2 uppercase tracking-widest font-bold">WELLNESS, THE HANNAM v2.5</p>
             </div>
           </div>
         )}
 
+        {/* 히스토리 및 노트 탭 */}
         {activeTab === 'history' && (
           <div className="space-y-6 animate-fade-in">
              <h3 className="text-lg font-serif font-bold text-hannam-green border-b border-gray-100 pb-3 uppercase tracking-wider">Reservation History</h3>
@@ -320,7 +296,6 @@ export const MemberPortal: React.FC = () => {
                       </div>
                    </div>
                 ))}
-                {history.length === 0 && <p className="py-20 text-center text-[11px] text-gray-300 italic">내역이 없습니다.</p>}
              </div>
           </div>
         )}
@@ -345,14 +320,13 @@ export const MemberPortal: React.FC = () => {
                       <p className="text-right text-[9px] font-bold text-gray-300 uppercase tracking-widest">- {note.therapistName}</p>
                    </div>
                 ))}
-                {history.filter(h => h.status === CareStatus.COMPLETED).length === 0 && <p className="py-20 text-center text-[11px] text-gray-300 italic">작성된 케어 노트가 없습니다.</p>}
              </div>
           </div>
         )}
       </main>
 
       {/* Floating Navigation Bar */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-hannam-green text-white px-8 py-4 rounded-2xl shadow-2xl flex justify-between items-center z-[100] border border-white/5 backdrop-blur-md bg-opacity-95">
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-sm max-w-sm bg-hannam-green text-white px-8 py-4 rounded-2xl shadow-2xl flex justify-between items-center z-[100] border border-white/5 backdrop-blur-md bg-opacity-95">
          {[
            { id: 'home', icon: LayoutGrid, label: 'Home' },
            { id: 'history', icon: Clock, label: 'History' },

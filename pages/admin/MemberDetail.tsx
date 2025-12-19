@@ -19,7 +19,6 @@ export const MemberDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isResModalOpen, setIsResModalOpen] = useState(false);
   
-  // Edit states
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [tempNote, setTempNote] = useState('');
   const [isEditingGoal, setIsEditingGoal] = useState(false);
