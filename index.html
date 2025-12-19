@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>THE HANNAM | WELLNESS</title>
+    <title>WELLNESS, THE HANNAM</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script>
@@ -13,12 +13,12 @@
           extend: {
             colors: {
               'hannam-bg': '#FDFDFD',
-              'hannam-soft-black': '#1C1C1C',
+              'hannam-green': '#1A362E',
               'hannam-gold': '#B89C7A',
-              'hannam-gray-100': '#F5F5F5',
-              'hannam-gray-200': '#EEEEEE',
+              'hannam-gray-bg': '#F9F9F9',
               'hannam-border': '#EAEAEA',
-              'hannam-dark-green': '#142B24',
+              'hannam-text': '#1C1C1C',
+              'hannam-subtext': '#666666',
             },
             fontFamily: {
               sans: ['Noto Sans KR', 'sans-serif'],
@@ -39,14 +39,10 @@
       .font-serif { font-family: 'Cormorant Garamond', serif; }
       
       .card-minimal {
-        background: #FDFDFD;
+        background: #FFFFFF;
         border: 1px solid #EAEAEA;
-        border-radius: 16px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      .card-minimal:hover {
-        border-color: #B89C7A;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+        border-radius: 12px;
+        transition: all 0.3s ease;
       }
       
       .num-clean {
@@ -55,46 +51,26 @@
         letter-spacing: 0.02em;
       }
       
-      .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+      .animate-fade-in { animation: fadeIn 0.5s ease-out; }
       @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(4px); }
+        from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
       }
       
-      ::-webkit-scrollbar { width: 5px; }
+      ::-webkit-scrollbar { width: 4px; }
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #E0E0E0; border-radius: 10px; }
 
-      input, select, textarea {
-        background-color: #FDFDFD;
-        border: 1px solid #EAEAEA;
-        border-radius: 12px;
-        outline: none;
-        transition: border-color 0.2s;
-      }
-      input:focus, select:focus, textarea:focus {
-        border-color: #B89C7A;
-      }
-      
-      /* 버튼 및 상호작용 요소 */
       .btn-primary {
-        background-color: #1C1C1C;
-        color: #FDFDFD;
-        transition: all 0.2s;
+        background-color: #1A362E;
+        color: #FFFFFF;
+        transition: opacity 0.2s;
       }
-      .btn-primary:hover {
-        background-color: #2A2A2A;
-        transform: translateY(-1px);
-      }
-      .btn-secondary {
-        background-color: #FDFDFD;
-        border: 1px solid #EAEAEA;
-        color: #666;
-        transition: all 0.2s;
-      }
-      .btn-secondary:hover {
-        border-color: #B89C7A;
-        color: #B89C7A;
+      .btn-primary:hover { opacity: 0.9; }
+      
+      .membership-card {
+        background: linear-gradient(135deg, #1A362E 0%, #142B24 100%);
+        box-shadow: 0 10px 30px rgba(26, 54, 46, 0.15);
       }
     </style>
   <script type="importmap">
