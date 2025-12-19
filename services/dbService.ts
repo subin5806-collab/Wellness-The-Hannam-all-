@@ -270,6 +270,10 @@ export const dbService = {
   },
 
   getAllContracts: async () => { await delay(); return getCollection<Contract>(COLLECTIONS.CONTRACTS); },
+  getMemberContracts: async (memberId: string) => {
+    await delay();
+    return getCollection<Contract>(COLLECTIONS.CONTRACTS).filter(c => c.memberId === memberId);
+  },
   getTemplates: async () => { await delay(); return getCollection<ContractTemplate>(COLLECTIONS.TEMPLATES); },
   uploadTemplate: async (title: string, file: File) => {
     await delay();
@@ -279,7 +283,6 @@ export const dbService = {
     saveCollection(COLLECTIONS.TEMPLATES, list);
     return newItem;
   },
-  // Added missing saveTemplate method for AdminDashboard.tsx
   saveTemplate: async (data: Omit<ContractTemplate, 'id' | 'createdAt'>) => {
     await delay();
     const list = getCollection<ContractTemplate>(COLLECTIONS.TEMPLATES);
@@ -310,11 +313,12 @@ export const dbService = {
     saveCollection(COLLECTIONS.TEMPLATES, filtered);
   },
   createContract: async (data: any) => {
-    await delay();
+    await delay(500);
     const contracts = getCollection<Contract>(COLLECTIONS.CONTRACTS);
     const members = getCollection<Member>(COLLECTIONS.MEMBERS);
     const memberId = data.memberPhone.replace(/[^0-9]/g, '');
     let member = members.find(m => m.id === memberId);
+    
     if (!member) {
       member = await dbService.registerMember({ ...data, phone: data.memberPhone, name: data.memberName, email: data.memberEmail, deposit: data.amount });
     } else {
@@ -324,7 +328,23 @@ export const dbService = {
       member.lastModifiedAt = new Date().toISOString();
       saveCollection(COLLECTIONS.MEMBERS, members);
     }
-    const newContract: Contract = { id: `cont_${Date.now()}`, memberId: member.id, memberName: member.name, memberEmail: member.email, memberPhone: member.phone, memberJoinedAt: member.joinedAt, type: data.type, typeName: data.typeName, amount: data.amount, status: 'COMPLETED', yearMonth: new Date().toISOString().slice(0, 7), createdAt: new Date().toISOString() };
+
+    const newContract: Contract = { 
+      id: `cont_${Date.now()}`, 
+      memberId: member.id, 
+      memberName: member.name, 
+      memberEmail: member.email, 
+      memberPhone: member.phone, 
+      memberJoinedAt: member.joinedAt, 
+      type: data.type, 
+      typeName: data.typeName, 
+      amount: data.amount, 
+      status: 'COMPLETED', 
+      signature: data.signature, // 서명 데이터 저장
+      yearMonth: new Date().toISOString().slice(0, 7), 
+      createdAt: new Date().toISOString() 
+    };
+    
     contracts.push(newContract);
     saveCollection(COLLECTIONS.CONTRACTS, contracts);
     return { contract: newContract, member };
@@ -373,8 +393,7 @@ export const dbService = {
   getCareRecordById: async (id: string) => { await delay(); return getCollection<CareRecord>(COLLECTIONS.CARE_HISTORY).find(c => c.id === id); },
   registerMembersBulk: async (list: any[]) => { await delay(800); const members = getCollection<Member>(COLLECTIONS.MEMBERS); let success = 0; for (const data of list) { const id = String(data.phone || '').replace(/[^0-9]/g, ''); if (!id || members.find(m => m.id === id)) continue; members.push({ id, password: String(data.password || '1234'), name: data.name, phone: data.phone, email: data.email, gender: data.gender === '남성' ? '남성' : '여성', role: UserRole.MEMBER, tier: (Number(data.deposit) || 0) >= 10000000 ? MemberTier.ROYAL : (Number(data.deposit) || 0) >= 5000000 ? MemberTier.GOLD : MemberTier.SILVER, deposit: Number(data.deposit) || 0, used: 0, remaining: Number(data.deposit) || 0, coreGoal: data.coreGoal || '데이터 일괄 반입', aiRecommended: '테라피 제안 대기', joinedAt: new Date().toISOString().split('T')[0], expiryDate: data.expiryDate || '', lastModifiedBy: 'Bulk-Import', lastModifiedAt: new Date().toISOString() }); success++; } saveCollection(COLLECTIONS.MEMBERS, members); return { successCount: success, skipCount: list.length - success }; },
   
-  // Add missing resendEmail method to fix property access errors
-  resendEmail: async (type: 'care' | 'contract', id: string) => {
+  resendEmail: async (type: 'care' | 'contract' | 'membership', id: string) => {
     await delay(500);
     console.log(`Resending ${type} email for ID: ${id}`);
     return true;

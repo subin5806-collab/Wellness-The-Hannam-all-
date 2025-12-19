@@ -2,16 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import { dbService } from '../../services/dbService';
 import { authService } from '../../services/authService';
-import { Member, CareRecord, Reservation, CareStatus, MemberTier } from '../../types';
+import { Member, CareRecord, Reservation, CareStatus } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { 
   LayoutGrid, 
-  LogOut, 
   RefreshCw,
   Clock,
-  FileText,
   ChevronRight,
-  Info,
   UserCheck,
   MessageSquare,
   Sparkles
@@ -83,23 +80,13 @@ export const MemberPortal: React.FC = () => {
   };
 
   const getRecentCompletedNotes = () => {
-    // 최신 완료된 노트 3개를 추출합니다. (Backend 연결 확인 완료)
     return history
       .filter(h => h.status === CareStatus.COMPLETED)
       .slice(0, 3);
   };
 
-  const getTierInfo = (tier: MemberTier) => {
-    switch (tier) {
-      case MemberTier.ROYAL: return { discount: '20%', next: null, target: 0 };
-      case MemberTier.GOLD: return { discount: '15%', next: MemberTier.ROYAL, target: 10000000 };
-      default: return { discount: '10%', next: MemberTier.GOLD, target: 5000000 };
-    }
-  };
-
   if (!member) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-widest text-xs">Loading Hannam Portal...</div>;
 
-  const tierInfo = getTierInfo(member.tier);
   const recentNotes = getRecentCompletedNotes();
 
   return (
@@ -163,7 +150,7 @@ export const MemberPortal: React.FC = () => {
               <div className="bg-hannam-green rounded-2xl p-8 text-white min-h-[200px] flex flex-col justify-between shadow-2xl relative overflow-hidden">
                 <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mb-16" />
                 <div>
-                  <p className="text-[12px] font-medium text-white/70 mb-4 tracking-tight">Remaining Membership Limit</p>
+                  <p className="text-[12px] font-medium text-white/70 mb-4 tracking-tight">{member.name}님 멤버십 잔액</p>
                   <h3 className="text-5xl font-serif font-medium tracking-tight">
                     <span className="text-3xl mr-1">₩</span>
                     {member.remaining.toLocaleString()}
@@ -182,7 +169,7 @@ export const MemberPortal: React.FC = () => {
               </div>
             </section>
 
-            {/* 3. 최근 케어 노트 요약 (New) */}
+            {/* 3. 최근 케어 노트 요약 */}
             <section className="space-y-4">
                <div className="flex justify-between items-end px-1">
                   <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Recent Care Recap</h3>
@@ -206,7 +193,7 @@ export const MemberPortal: React.FC = () => {
                        <div className="mt-4 flex items-center justify-between pt-3 border-t border-gray-50">
                           <div className="flex items-center gap-1.5">
                              <UserCheck className="w-3 h-3 text-hannam-green opacity-40" />
-                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Therapist: {note.therapistName}</span>
+                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{note.therapistName} 테라피스트</span>
                           </div>
                           <Sparkles className="w-3 h-3 text-hannam-gold/30" />
                        </div>
@@ -244,36 +231,6 @@ export const MemberPortal: React.FC = () => {
                   )}
                </div>
             </section>
-
-            {/* 5. 개인 웰니스 플랜 */}
-            <section className="bg-[#FBFBFB] rounded-2xl p-6 border border-gray-100 shadow-inner">
-               <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-center gap-2">
-                     <Info className="w-3.5 h-3.5 text-hannam-gold" />
-                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Personal Wellness Plan</h4>
-                  </div>
-               </div>
-               <div className="space-y-5">
-                  <div className="bg-white p-4 rounded-xl border border-gray-50">
-                    <p className="text-[9px] font-black text-hannam-gold mb-1.5 uppercase tracking-widest">Focus Goal</p>
-                    <p className="text-xs font-bold text-slate-900 leading-relaxed">{member.coreGoal || '설정된 목표가 없습니다.'}</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-xl border border-gray-50">
-                    <p className="text-[9px] font-black text-hannam-gold mb-1.5 uppercase tracking-widest">Expert Recommendation</p>
-                    <p className="text-xs font-bold text-hannam-green leading-relaxed">{member.aiRecommended || '담당 전문가의 추천을 기다리는 중입니다.'}</p>
-                  </div>
-               </div>
-            </section>
-
-            {/* 로그아웃 버튼 */}
-            <div className="pt-16 pb-6 text-center">
-              <button 
-                onClick={() => { if(confirm('로그아웃 하시겠습니까?')) { authService.logout(); navigate('/'); } }}
-                className="text-[10px] font-bold text-gray-300 uppercase tracking-widest hover:text-red-400 transition-colors flex items-center justify-center gap-1.5 mx-auto"
-              >
-                <LogOut className="w-3 h-3" /> Logout from Portal
-              </button>
-            </div>
           </div>
         )}
 
@@ -326,11 +283,11 @@ export const MemberPortal: React.FC = () => {
       </main>
 
       {/* Floating Navigation Bar */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-sm max-w-sm bg-hannam-green text-white px-8 py-4 rounded-2xl shadow-2xl flex justify-between items-center z-[100] border border-white/5 backdrop-blur-md bg-opacity-95">
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-sm max-w-sm bg-hannam-green text-white px-6 py-4 rounded-2xl shadow-2xl flex justify-between items-center z-[100] border border-white/5 backdrop-blur-md bg-opacity-95">
          {[
            { id: 'home', icon: LayoutGrid, label: 'Home' },
            { id: 'history', icon: Clock, label: 'History' },
-           { id: 'notes', icon: FileText, label: 'Care Notes' }
+           { id: 'notes', icon: MessageSquare, label: 'Notes' }
          ].map(item => (
            <button 
              key={item.id}
@@ -338,7 +295,7 @@ export const MemberPortal: React.FC = () => {
              className={`flex flex-col items-center gap-1.5 transition-all active:scale-90 ${activeTab === item.id ? 'text-hannam-gold' : 'text-white/30'}`}
            >
               <item.icon className="w-5 h-5" />
-              <span className="text-[9px] font-bold uppercase tracking-widest whitespace-nowrap">{item.label}</span>
+              <span className="text-[8px] font-bold uppercase tracking-widest whitespace-nowrap">{item.label}</span>
            </button>
          ))}
       </nav>
