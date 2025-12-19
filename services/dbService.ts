@@ -26,11 +26,17 @@ const saveCollection = (key: string, data: any[]) => {
   localStorage.setItem(key, JSON.stringify(data));
 };
 
-// Added missing helper function for contract filename generation to match usage in ContractDashboard
 export const generateHannamFilename = (name: string, id: string, joinedAt: string, typeName: string): string => {
   const cleanDate = joinedAt.replace(/-/g, '');
-  // Format: [THE_HANNAM]_[JOIN_DATE]_[NAME]_[TYPE].pdf
   return `[THE_HANNAM]_${cleanDate}_${name}_${typeName}.pdf`;
+};
+
+export const validateEmail = (email: string) => {
+  return String(email)
+    .toLowerCase()
+    .match(
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+    );
 };
 
 export const dbService = {
@@ -57,8 +63,16 @@ export const dbService = {
   registerMember: async (data: any) => {
     await delay(500);
     const members = getCollection<Member>(COLLECTIONS.MEMBERS);
+    
+    // 아이디를 핸드폰 번호로 설정 (하이픈 제거하여 일관성 유지)
+    const memberId = data.phone.replace(/[^0-9]/g, '');
+
+    const existing = members.find(m => m.id === memberId);
+    if (existing) throw new Error('이미 가입된 핸드폰 번호입니다.');
+
     const newMember: Member = {
-      id: `user_${Date.now()}`,
+      id: memberId,
+      password: data.password,
       name: data.name,
       phone: data.phone,
       email: data.email,
@@ -68,14 +82,16 @@ export const dbService = {
       deposit: data.deposit || 0,
       used: 0,
       remaining: data.deposit || 0,
-      coreGoal: 'Stress Care & Sleep Quality',
-      aiRecommended: 'Meditation & Yoga Therapy',
+      coreGoal: 'Wellness Balanced Life',
+      aiRecommended: 'Personalized Therapy',
       joinedAt: new Date().toISOString().split('T')[0],
-      address: data.address,
-      adminNote: data.adminNote,
+      address: data.address || '',
+      adminNote: data.adminNote || '',
     };
     members.push(newMember);
     saveCollection(COLLECTIONS.MEMBERS, members);
+    
+    console.log(`[Email Sent] Welcome to THE HANNAM, ${newMember.name}! Sent to ${newMember.email}`);
     return newMember;
   },
 
@@ -104,11 +120,13 @@ export const dbService = {
     const contracts = getCollection<Contract>(COLLECTIONS.CONTRACTS);
     const members = getCollection<Member>(COLLECTIONS.MEMBERS);
     
-    let member = members.find(m => m.name === data.memberName && m.phone === data.memberPhone);
+    const memberId = data.memberPhone.replace(/[^0-9]/g, '');
+    let member = members.find(m => m.id === memberId);
     
     if (!member) {
       member = {
-        id: `user_${Date.now()}`,
+        id: memberId,
+        password: '1234', // 임시 비밀번호
         name: data.memberName,
         phone: data.memberPhone,
         email: data.memberEmail,
@@ -118,8 +136,8 @@ export const dbService = {
         deposit: data.amount,
         used: 0,
         remaining: data.amount,
-        coreGoal: 'Physical Recovery',
-        aiRecommended: 'Evening Meditation',
+        coreGoal: 'Recovery Plan',
+        aiRecommended: 'Therapeutic Session',
         joinedAt: new Date().toISOString().split('T')[0],
       };
       members.push(member);
@@ -152,12 +170,9 @@ export const dbService = {
     contracts.push(newContract);
     saveCollection(COLLECTIONS.CONTRACTS, contracts);
     
+    console.log(`[Email Sent] Your Contract "${newContract.typeName}" is saved. Sent to ${newContract.memberEmail}`);
+    
     return { contract: newContract, member };
-  },
-
-  getMemberContracts: async (memberId: string) => { 
-    await delay(); 
-    return getCollection<Contract>(COLLECTIONS.CONTRACTS).filter(c => c.memberId === memberId);
   },
 
   processCareSession: async (data: any) => {
@@ -166,7 +181,6 @@ export const dbService = {
     const now = new Date();
     const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     
-    // 서명 전에는 차감하지 않음 (대기 상태로 생성)
     const newRecord: CareRecord = {
       id: `care_${Date.now()}`,
       memberId: data.memberId,
@@ -199,7 +213,6 @@ export const dbService = {
       const member = members.find(m => m.id === record.memberId);
       
       if (member) {
-        // 실제 서명 시점에 잔액 차감 발생
         member.remaining -= record.discountedPrice;
         member.used += record.discountedPrice;
         saveCollection(COLLECTIONS.MEMBERS, members);
@@ -209,6 +222,8 @@ export const dbService = {
       history[idx].signature = signature;
       history[idx].signedAt = new Date().toISOString();
       saveCollection(COLLECTIONS.CARE_HISTORY, history);
+      
+      console.log(`[Email Sent] Payment Receipt for ${record.content} - Balance Updated. Sent to ${member?.email}`);
     }
   },
 

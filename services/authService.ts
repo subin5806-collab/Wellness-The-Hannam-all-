@@ -1,22 +1,46 @@
 
-import { User, UserRole, PermissionScope, ROLE_SCOPES } from '../types';
+import { User, UserRole, PermissionScope, ROLE_SCOPES, Member } from '../types';
 
 let currentUser: User | null = null;
 
 export const authService = {
-  login: async (email: string, role: UserRole, fixedId?: string): Promise<User> => {
+  adminLogin: async (email: string, role: UserRole): Promise<User> => {
     await new Promise((resolve) => setTimeout(resolve, 300));
-    
     const mockUser: User = {
-      id: fixedId || (email === 'guest@example.com' ? 'guest-123' : `user-${Date.now()}`),
+      id: `admin-${Date.now()}`,
       name: email.split('@')[0],
       email,
       role,
     };
-    
     currentUser = mockUser;
     localStorage.setItem('currentUser', JSON.stringify(mockUser));
     return mockUser;
+  },
+
+  memberLogin: async (memberId: string, password: string): Promise<User> => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    
+    // 핸드폰 번호에서 숫지만 추출하여 ID 비교
+    const cleanId = memberId.replace(/[^0-9]/g, '');
+    const membersRaw = localStorage.getItem('firestore_members');
+    const members: Member[] = membersRaw ? JSON.parse(membersRaw) : [];
+    
+    const member = members.find(m => m.id === cleanId && m.password === password);
+    
+    if (!member) {
+      throw new Error('핸드폰 번호 또는 비밀번호가 일치하지 않습니다.');
+    }
+
+    const user: User = {
+      id: member.id,
+      name: member.name,
+      email: member.email,
+      role: UserRole.MEMBER,
+    };
+    
+    currentUser = user;
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    return user;
   },
 
   logout: () => {

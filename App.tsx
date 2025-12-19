@@ -14,9 +14,9 @@ import { ContractCreator } from './pages/admin/ContractCreator';
 import { MemberPortal } from './pages/member/MemberPortal';
 import { ContractViewer } from './pages/contract/ContractViewer';
 import { authService } from './services/authService';
-import { dbService } from './services/dbService';
-import { UserRole, User, MemberTier, CareStatus } from './types';
-import { Bell, Shield } from 'lucide-react';
+import { dbService, validateEmail } from './services/dbService';
+import { UserRole, User, MemberTier } from './types';
+import { Bell, Shield, User as UserIcon, Lock, ChevronRight, Mail, Phone, UserPlus } from 'lucide-react';
 
 const AdminLayout: React.FC<{ user: User; onLogout: () => void; children: React.ReactNode }> = ({ user, onLogout, children }) => {
   const location = useLocation();
@@ -31,20 +31,20 @@ const AdminLayout: React.FC<{ user: User; onLogout: () => void; children: React.
   const activePath = navItems.find(item => location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path)))?.path || '/admin';
 
   return (
-    <div className="flex flex-col h-screen bg-[#FBF9F6]">
-      <header className="bg-white px-10 py-5 flex justify-between items-center border-b border-gray-100 z-[100]">
-        <div className="flex items-center gap-12">
+    <div className="flex flex-col h-screen bg-[#FDFDFD]">
+      <header className="bg-white px-8 py-4 flex justify-between items-center border-b border-gray-100 z-[100] shadow-sm">
+        <div className="flex items-center gap-10">
           <div className="flex items-center gap-3">
-             <h1 className="text-xl font-serif font-bold tracking-tight text-gray-900">Wellness, The Hannam</h1>
-             <span className="text-[10px] font-black text-[#C9B08F] uppercase tracking-widest mt-1">Admin</span>
+             <h1 className="text-sm font-serif font-bold tracking-[0.2em] text-gray-900 uppercase">The Hannam Wellness</h1>
+             <span className="text-[8px] font-black text-[#C9B08F] uppercase tracking-[0.3em] bg-gray-50 px-2 py-0.5 rounded">Intelligence</span>
           </div>
-          <nav className="flex gap-2">
+          <nav className="flex gap-1">
             {navItems.map(item => (
               <Link 
                 key={item.path} 
                 to={item.path} 
-                className={`px-6 py-2.5 rounded-xl text-[13px] font-bold transition-all ${
-                  activePath === item.path ? 'bg-[#FBF9F6] text-black shadow-inner' : 'text-gray-400 hover:text-gray-900'
+                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                  activePath === item.path ? 'bg-[#F9F9F9] text-black' : 'text-gray-300 hover:text-gray-900'
                 }`}
               >
                 {item.label}
@@ -52,12 +52,12 @@ const AdminLayout: React.FC<{ user: User; onLogout: () => void; children: React.
             ))}
           </nav>
         </div>
-        <div className="flex items-center gap-6">
-          <button className="text-gray-300 hover:text-black transition-colors relative">
-             <Bell className="w-5 h-5" />
-             <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-red-500 rounded-full border border-white" />
+        <div className="flex items-center gap-5">
+          <button className="text-gray-200 hover:text-black transition-colors relative">
+             <Bell className="w-4 h-4" />
+             <div className="absolute top-[-2px] right-[-2px] w-1 h-1 bg-red-500 rounded-full" />
           </button>
-          <div className="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center text-white text-[10px] font-black uppercase cursor-pointer hover:scale-105 transition-transform" onClick={onLogout}>
+          <div className="w-7 h-7 bg-[#1A1A1A] rounded-full flex items-center justify-center text-white text-[8px] font-black uppercase cursor-pointer hover:scale-105 transition-transform" onClick={onLogout}>
              {user.name[0]}
           </div>
         </div>
@@ -67,32 +67,139 @@ const AdminLayout: React.FC<{ user: User; onLogout: () => void; children: React.
   );
 };
 
-const LoginScreen: React.FC<{ onLogin: (role: UserRole) => void }> = ({ onLogin }) => (
-  <div className="min-h-screen bg-[#FBF9F6] flex items-center justify-center p-8 font-sans">
-    <div className="w-full max-w-lg bg-white p-16 rounded-[48px] shadow-2xl border border-gray-50 animate-fade-in text-center">
-      <div className="w-20 h-20 bg-[#3A453F] rounded-[24px] mx-auto flex items-center justify-center mb-10 shadow-2xl shadow-black/10">
-        <Shield className="w-10 h-10 text-[#C9B08F]" />
-      </div>
-      <h1 className="text-3xl font-serif font-bold text-gray-900 mb-2 tracking-tight">Wellness, The Hannam</h1>
-      <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.3em] mb-12">Private Wellness Concierge</p>
-      
-      <div className="space-y-6">
-        <button 
-          onClick={() => onLogin(UserRole.SUPER_ADMIN)}
-          className="w-full py-6 bg-[#1a1a1a] text-white rounded-[20px] font-black text-lg hover:bg-black transition-all shadow-xl active:scale-95"
-        >
-          관리자 로그인 (Admin Portal)
-        </button>
-        <button 
-          onClick={() => onLogin(UserRole.MEMBER)}
-          className="w-full py-6 bg-white border border-gray-200 text-gray-900 rounded-[20px] font-black text-lg hover:bg-gray-50 transition-all shadow-sm active:scale-95"
-        >
-          회원 포털 (Member Portal)
-        </button>
+const LoginScreen: React.FC<{ 
+  onAdminLogin: (role: UserRole) => void; 
+  onMemberLogin: (id: string, pw: string) => void;
+  onMemberSignup: (data: any) => Promise<void>;
+}> = ({ onAdminLogin, onMemberLogin, onMemberSignup }) => {
+  const [mode, setMode] = useState<'select' | 'member' | 'signup'>('select');
+  const [memberId, setMemberId] = useState('');
+  const [password, setPassword] = useState('');
+  
+  const [signupData, setSignupData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    gender: '여성',
+    password: ''
+  });
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onMemberLogin(memberId, password);
+  };
+
+  const handleSignupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!signupData.name || !signupData.phone || !signupData.email || !signupData.password) {
+      return alert('모든 항목을 입력해주세요.');
+    }
+    if (!validateEmail(signupData.email)) {
+      return alert('유효한 이메일 주소를 입력해주세요.');
+    }
+    try {
+      await onMemberSignup(signupData);
+      alert('회원가입이 완료되었습니다. 핸드폰 번호로 로그인해주세요.');
+      setMode('member');
+      setMemberId(signupData.phone);
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-6 font-sans">
+      <div className="w-full max-w-md bg-white p-10 rounded-[40px] shadow-2xl border border-gray-50 animate-fade-in text-center relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-hannam-green" />
+        <div className="w-14 h-14 bg-[#1A1A1A] rounded-2xl mx-auto flex items-center justify-center mb-6 shadow-xl">
+          <Shield className="w-6 h-6 text-[#C9B08F]" />
+        </div>
+        <h1 className="text-xl font-serif font-bold text-gray-900 mb-1 tracking-[0.1em] uppercase">The Hannam Wellness</h1>
+        <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.4em] mb-10">Private Intelligence Service</p>
+        
+        {mode === 'select' && (
+          <div className="space-y-3">
+            <button onClick={() => setMode('member')} className="w-full py-4 bg-[#1A1A1A] text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg active:scale-95">
+              Member Access <ChevronRight className="w-3 h-3" />
+            </button>
+            <button onClick={() => setMode('signup')} className="w-full py-4 bg-white border border-gray-100 text-gray-900 rounded-xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-gray-50 transition-all active:scale-95">
+              Join Membership <UserPlus className="w-3 h-3" />
+            </button>
+            <button onClick={() => onAdminLogin(UserRole.SUPER_ADMIN)} className="w-full py-4 text-gray-300 text-[10px] font-black uppercase tracking-[0.2em] hover:text-black transition-all mt-4">
+              Admin System
+            </button>
+          </div>
+        )}
+
+        {mode === 'member' && (
+          <form onSubmit={handleLoginSubmit} className="space-y-5 text-left animate-fade-in">
+            <div className="space-y-1.5">
+               <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number (ID)</label>
+               <div className="relative">
+                  <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
+                  <input type="text" required value={memberId} onChange={e => setMemberId(e.target.value)} placeholder="010-0000-0000" className="w-full pl-11 pr-4 py-3.5 bg-[#F9F9F9] rounded-xl font-bold text-[11px] outline-none border border-transparent focus:border-black transition-all num-clean" />
+               </div>
+            </div>
+            <div className="space-y-1.5">
+               <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Security Key</label>
+               <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
+                  <input type="password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="w-full pl-11 pr-4 py-3.5 bg-[#F9F9F9] rounded-xl font-bold text-[11px] outline-none border border-transparent focus:border-black transition-all" />
+               </div>
+            </div>
+            <button type="submit" className="w-full py-4 bg-[#1A1A1A] text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-black transition-all shadow-lg active:scale-95 mt-4">
+              Authenticate & Enter
+            </button>
+            <button type="button" onClick={() => setMode('select')} className="w-full text-[8px] font-black text-gray-300 uppercase tracking-widest text-center mt-2 hover:text-black">Back to Selection</button>
+          </form>
+        )}
+
+        {mode === 'signup' && (
+          <form onSubmit={handleSignupSubmit} className="space-y-4 text-left animate-fade-in">
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                   <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Name</label>
+                   <input type="text" required value={signupData.name} onChange={e => setSignupData({...signupData, name: e.target.value})} className="w-full px-4 py-3 bg-[#F9F9F9] rounded-xl font-bold text-[11px] outline-none border border-transparent focus:border-black" />
+                </div>
+                <div className="space-y-1">
+                   <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Gender</label>
+                   <select value={signupData.gender} onChange={e => setSignupData({...signupData, gender: e.target.value})} className="w-full px-4 py-3 bg-[#F9F9F9] rounded-xl font-bold text-[11px] outline-none border border-transparent focus:border-black appearance-none">
+                      <option>여성</option>
+                      <option>남성</option>
+                   </select>
+                </div>
+             </div>
+             <div className="space-y-1">
+                <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
+                <div className="relative">
+                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300" />
+                   <input type="text" required value={signupData.phone} onChange={e => setSignupData({...signupData, phone: e.target.value})} placeholder="010-0000-0000" className="w-full pl-10 pr-4 py-3 bg-[#F9F9F9] rounded-xl font-bold text-[11px] outline-none border border-transparent focus:border-black num-clean" />
+                </div>
+             </div>
+             <div className="space-y-1">
+                <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Email</label>
+                <div className="relative">
+                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300" />
+                   <input type="email" required value={signupData.email} onChange={e => setSignupData({...signupData, email: e.target.value})} placeholder="member@hannam.com" className="w-full pl-10 pr-4 py-3 bg-[#F9F9F9] rounded-xl font-bold text-[11px] outline-none border border-transparent focus:border-black" />
+                </div>
+             </div>
+             <div className="space-y-1">
+                <label className="text-[8px] font-black text-gray-400 uppercase tracking-widest ml-1">Set Password</label>
+                <div className="relative">
+                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-300" />
+                   <input type="password" required value={signupData.password} onChange={e => setSignupData({...signupData, password: e.target.value})} placeholder="Min 4 chars" className="w-full pl-10 pr-4 py-3 bg-[#F9F9F9] rounded-xl font-bold text-[11px] outline-none border border-transparent focus:border-black" />
+                </div>
+             </div>
+             <button type="submit" className="w-full py-4 bg-hannam-green text-white rounded-xl font-black text-[11px] uppercase tracking-[0.2em] hover:bg-black transition-all shadow-lg active:scale-95 mt-4">
+               Complete Sign Up
+             </button>
+             <button type="button" onClick={() => setMode('select')} className="w-full text-[8px] font-black text-gray-300 uppercase tracking-widest text-center mt-2 hover:text-black">Cancel</button>
+          </form>
+        )}
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(authService.getCurrentUser());
@@ -103,52 +210,22 @@ const App: React.FC = () => {
     setIsLoading(false);
   }, []);
 
-  const handleLogin = async (role: UserRole) => {
-    const email = role === UserRole.MEMBER ? 'hong@example.com' : 'admin@thehannam.com';
-    const fixedId = role === UserRole.MEMBER ? 'user_001' : undefined;
-    const loggedUser = await authService.login(email, role, fixedId);
-    
-    if (role === UserRole.MEMBER) {
-      // 회원 포털 접속 시 무한 로딩 방지를 위한 초기 데이터 세팅
-      const members = JSON.parse(localStorage.getItem('firestore_members') || '[]');
-      if (!members.find((m: any) => m.id === 'user_001')) {
-        members.push({
-          id: 'user_001',
-          name: '홍길동',
-          phone: '010-1111-2222',
-          email: 'hong@example.com',
-          gender: '남성',
-          role: UserRole.MEMBER,
-          tier: MemberTier.ROYAL,
-          deposit: 15000000,
-          used: 12563333,
-          remaining: 1436667,
-          coreGoal: 'Physical Recovery',
-          aiRecommended: 'Evening Meditation',
-          joinedAt: '2025-01-01',
-          address: '서울시 용산구 한남더힐'
-        });
-        localStorage.setItem('firestore_members', JSON.stringify(members));
-      }
-
-      // 샘플 예약 데이터 세팅 (대시보드 공백 방지)
-      const reservations = JSON.parse(localStorage.getItem('firestore_reservations') || '[]');
-      if (reservations.length === 0) {
-        reservations.push({
-          id: 'res_001',
-          memberId: 'user_001',
-          memberName: '홍길동',
-          therapistId: 'staff_1',
-          therapistName: '사라 테라피스트',
-          dateTime: '2025-12-18T14:00:00',
-          serviceType: '프리미엄 바디 테라피',
-          status: 'booked'
-        });
-        localStorage.setItem('firestore_reservations', JSON.stringify(reservations));
-      }
-    }
-    
+  const handleAdminLogin = async (role: UserRole) => {
+    const loggedUser = await authService.adminLogin('admin@thehannam.com', role);
     setUser(loggedUser);
+  };
+
+  const handleMemberLogin = async (id: string, pw: string) => {
+    try {
+      const loggedUser = await authService.memberLogin(id, pw);
+      setUser(loggedUser);
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
+  const handleMemberSignup = async (data: any) => {
+    await dbService.registerMember(data);
   };
 
   const handleLogout = () => {
@@ -162,7 +239,7 @@ const App: React.FC = () => {
     <HashRouter>
       {!user ? (
         <Routes>
-          <Route path="*" element={<LoginScreen onLogin={handleLogin} />} />
+          <Route path="*" element={<LoginScreen onAdminLogin={handleAdminLogin} onMemberLogin={handleMemberLogin} onMemberSignup={handleMemberSignup} />} />
         </Routes>
       ) : (
         <>

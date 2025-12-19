@@ -35,7 +35,8 @@ export enum MemberTier {
 }
 
 export interface Member {
-  id: string;
+  id: string; // 회원번호 (e.g., HNM-2025-0001)
+  password?: string; // 추가: 고객 설정 비밀번호
   name: string;
   phone: string;
   email: string;
@@ -58,7 +59,7 @@ export interface CareRecord {
   therapistId: string;
   therapistName: string;
   date: string;
-  yearMonth: string; // 추가: 검색 용이성
+  yearMonth: string;
   content: string;
   originalPrice: number;
   discountRate: number;
@@ -98,14 +99,14 @@ export interface Contract {
   memberName: string;
   memberEmail: string;
   memberPhone: string;
-  memberJoinedAt: string; // 파일명 생성용
+  memberJoinedAt: string;
   type: 'MEMBERSHIP' | 'WAIVER' | 'PT_AGREEMENT';
   typeName: string;
   amount: number;
   status: 'COMPLETED' | 'PENDING';
   signature?: string;
   pdfName?: string;
-  yearMonth: string; // 추가: 월별 저장 관리
+  yearMonth: string;
   createdAt: string;
 }
 
