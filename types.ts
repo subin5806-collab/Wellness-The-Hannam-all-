@@ -13,6 +13,14 @@ export interface User {
   role: UserRole;
 }
 
+export interface Therapist {
+  id: string;
+  name: string;
+  specialty: string;
+  phone: string;
+  createdAt: string;
+}
+
 export enum PermissionScope {
   CARE_WRITE = 'care:write',
   CARE_READ = 'care:read',
@@ -35,8 +43,8 @@ export enum MemberTier {
 }
 
 export interface Member {
-  id: string; // 회원번호 (e.g., HNM-2025-0001)
-  password?: string; // 추가: 고객 설정 비밀번호
+  id: string; // 회원번호 (핸드폰 번호 숫자만)
+  password?: string;
   name: string;
   phone: string;
   email: string;
