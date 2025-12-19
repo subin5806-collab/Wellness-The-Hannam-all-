@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { dbService, validateEmail } from '../../services/dbService';
 import { useNavigate } from 'react-router-dom';
-import { X, Lock, Mail, Phone, User as UserIcon } from 'lucide-react';
+import { X, Lock, Mail, Phone, User as UserIcon, Award } from 'lucide-react';
+import { ContractTemplate } from '../../types';
 
 export const MemberRegistration: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -14,11 +15,18 @@ export const MemberRegistration: React.FC = () => {
     address: '',
     adminNote: '',
     includeMembership: true,
+    templateId: '',
     planName: '',
     deposit: 0,
     expiryDate: ''
   });
+  
+  const [templates, setTemplates] = useState<ContractTemplate[]>([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    dbService.getTemplates().then(setTemplates);
+  }, []);
 
   const handleRegister = async () => {
     if (!formData.name || !formData.phone || !formData.password || !formData.email) {
@@ -31,9 +39,22 @@ export const MemberRegistration: React.FC = () => {
       return alert('비밀번호는 최소 4자 이상이어야 합니다.');
     }
 
-    const newMember = await dbService.registerMember(formData);
-    alert(`회원 등록이 완료되었습니다.\n회원번호: ${newMember.id}`);
-    navigate('/admin/members');
+    try {
+      const newMember = await dbService.registerMember(formData);
+      alert(`회원 등록이 완료되었습니다.\n회원번호: ${newMember.id}`);
+      navigate('/admin/members');
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
+  const handleTemplateChange = (id: string) => {
+    const tmpl = templates.find(t => t.id === id);
+    setFormData({
+      ...formData,
+      templateId: id,
+      planName: tmpl ? tmpl.title : ''
+    });
   };
 
   return (
@@ -114,9 +135,25 @@ export const MemberRegistration: React.FC = () => {
                    </div>
                 </div>
                 <div className={`space-y-5 transition-opacity ${formData.includeMembership ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
-                   <div className="space-y-2">
-                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Deposit Amount (KRW)</label>
-                      <input type="number" value={formData.deposit} onChange={e => setFormData({...formData, deposit: Number(e.target.value)})} className="w-full px-4 py-4 border border-gray-100 rounded-xl font-black text-xs num-clean" />
+                   <div className="grid grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Membership Plan</label>
+                         <div className="relative">
+                            <Award className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
+                            <select 
+                              value={formData.templateId} 
+                              onChange={e => handleTemplateChange(e.target.value)}
+                              className="w-full pl-10 pr-4 py-4 bg-[#F9F9F9] rounded-xl font-bold outline-none text-xs border border-transparent focus:border-black transition-all"
+                            >
+                               <option value="">회원권 선택 안함</option>
+                               {templates.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                            </select>
+                         </div>
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Deposit Amount (KRW)</label>
+                         <input type="number" value={formData.deposit} onChange={e => setFormData({...formData, deposit: Number(e.target.value)})} className="w-full px-4 py-4 border border-gray-100 rounded-xl font-black text-xs num-clean" />
+                      </div>
                    </div>
                 </div>
              </section>

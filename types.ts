@@ -43,7 +43,7 @@ export enum MemberTier {
 }
 
 export interface Member {
-  id: string; // 회원번호 (핸드폰 번호 숫자만)
+  id: string; 
   password?: string;
   name: string;
   phone: string;
@@ -57,9 +57,11 @@ export interface Member {
   coreGoal: string;
   aiRecommended: string;
   joinedAt: string;
-  expiryDate?: string; // 회원 만료일
+  expiryDate?: string; 
   adminNote?: string;
   address?: string;
+  lastModifiedBy?: string;
+  lastModifiedAt?: string;
 }
 
 export interface CareRecord {
@@ -119,13 +121,30 @@ export interface Contract {
   createdAt: string;
 }
 
+export type InquiryStatus = 'UNREGISTERED' | 'IN_PROGRESS' | 'REGISTERED' | 'COMPLETED';
+export type InquiryPath = 'PHONE' | 'VISIT' | 'WEB' | 'SNS' | 'ETC';
+
+export interface InquiryLog {
+  id: string;
+  staffName: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface Inquiry {
   id: string;
-  memberId?: string;
   memberName: string;
-  content: string;
-  status: 'new' | 'replied';
-  createdAt: string;
+  phone: string;
+  path: InquiryPath;
+  content: string; // 최초 문의 내용
+  logs: InquiryLog[]; // 누적 상담 기록
+  status: InquiryStatus;
+  needsFollowUp: boolean; // 재컨택 필요 여부
+  receivedBy: string; 
+  assignedStaff: string; 
+  createdAt: string; // YYYY-MM-DD HH:mm:ss
+  yearMonth: string; // YYYY-MM (다운로드용)
+  updatedAt: string;
 }
 
 export const ROLE_SCOPES: Record<UserRole, PermissionScope[]> = {

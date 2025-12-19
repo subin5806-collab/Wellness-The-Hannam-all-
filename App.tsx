@@ -17,7 +17,7 @@ import { ContractViewer } from './pages/contract/ContractViewer';
 import { authService } from './services/authService';
 import { dbService, validateEmail } from './services/dbService';
 import { UserRole, User } from './types';
-import { LogOut, LayoutGrid, Users, Calendar, FileText, Shield, ChevronRight } from 'lucide-react';
+import { LogOut, LayoutGrid, Users, Calendar, FileText, ChevronRight, Lock, MessageSquare } from 'lucide-react';
 
 const AdminLayout: React.FC<{ user: User; onLogout: () => void; children: React.ReactNode }> = ({ user, onLogout, children }) => {
   const location = useLocation();
@@ -26,6 +26,7 @@ const AdminLayout: React.FC<{ user: User; onLogout: () => void; children: React.
     { label: 'Reservations', path: '/admin/reservations', icon: Calendar },
     { label: 'Members', path: '/admin/members', icon: Users },
     { label: 'Contracts', path: '/admin/contracts', icon: FileText },
+    { label: 'Inquiries', path: '/admin/inquiries', icon: MessageSquare },
   ];
 
   const activePath = navItems.find(item => location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path)))?.path || '/admin';
@@ -69,67 +70,99 @@ const AdminLayout: React.FC<{ user: User; onLogout: () => void; children: React.
 };
 
 const LoginScreen: React.FC<{ 
-  onAdminLogin: (role: UserRole) => void; 
+  onAdminLogin: (email: string, pw: string) => void; 
   onMemberLogin: (id: string, pw: string) => void;
   onMemberSignup: (data: any) => Promise<void>;
 }> = ({ onAdminLogin, onMemberLogin, onMemberSignup }) => {
-  const [mode, setMode] = useState<'select' | 'member' | 'signup'>('select');
+  const [mode, setMode] = useState<'select' | 'member' | 'signup' | 'admin'>('select');
   const [memberId, setMemberId] = useState('');
-  const [password, setPassword] = useState('');
+  const [memberPassword, setMemberPassword] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [signupData, setSignupData] = useState({ name: '', phone: '', email: '', gender: '여성', password: '' });
 
-  const handleLoginSubmit = (e: React.FormEvent) => { e.preventDefault(); onMemberLogin(memberId, password); };
+  const handleLoginSubmit = (e: React.FormEvent) => { e.preventDefault(); onMemberLogin(memberId, memberPassword); };
+  const handleAdminSubmit = (e: React.FormEvent) => { e.preventDefault(); onAdminLogin(adminEmail, adminPassword); };
 
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!signupData.name || !signupData.phone || !signupData.email || !signupData.password) return alert('모든 항목을 입력하세요.');
-    if (!validateEmail(signupData.email)) return alert('유효한 이메일을 입력하세요.');
     try {
       await onMemberSignup(signupData);
-      alert('가입 완료! 핸드폰 번호로 로그인하세요.');
+      alert('가입 완료! 등록하신 핸드폰 번호로 로그인하세요.');
       setMode('member');
       setMemberId(signupData.phone);
     } catch (e: any) { alert(e.message); }
   };
 
   return (
-    <div className="min-h-screen bg-hannam-gray-bg flex items-center justify-center p-6 font-sans">
-      <div className="w-full max-w-md bg-white p-12 rounded-[32px] shadow-2xl border border-hannam-border text-center relative overflow-hidden animate-fade-in">
+    <div className="min-h-screen bg-[#F7F7F7] flex items-center justify-center p-6 font-sans">
+      <div className="w-full max-w-md bg-white p-12 rounded-[40px] shadow-2xl border border-gray-100 text-center relative overflow-hidden animate-fade-in">
         <div className="absolute top-0 left-0 w-full h-1.5 bg-hannam-green" />
         <div className="py-10">
-          <h1 className="text-2xl font-serif font-medium text-hannam-text mb-2 tracking-[0.1em] uppercase">WELLNESS, THE HANNAM</h1>
-          <p className="text-[9px] font-bold text-hannam-subtext uppercase tracking-[0.5em] mb-4">INTELLIGENCE REGISTRY SERVICE</p>
+          <h1 className="text-2xl font-serif font-bold text-hannam-green mb-2 tracking-[0.1em] uppercase">THE HANNAM</h1>
+          <p className="text-[9px] font-black text-gray-300 uppercase tracking-[0.5em] mb-4">Registry Service Console</p>
         </div>
         
         {mode === 'select' && (
           <div className="space-y-4">
-            <button onClick={() => setMode('member')} className="w-full py-5 bg-hannam-green text-white rounded-xl font-bold text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:opacity-95 transition-all shadow-lg">
+            <button onClick={() => setMode('member')} className="w-full py-5 bg-hannam-green text-white rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:opacity-95 transition-all shadow-lg">
               Member Portal Access <ChevronRight className="w-4 h-4 text-hannam-gold" />
             </button>
-            <button onClick={() => setMode('signup')} className="w-full py-5 bg-white border border-hannam-border text-hannam-text rounded-xl font-bold text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-hannam-gray-bg transition-all">
-              Private Membership Join
+            <button onClick={() => setMode('signup')} className="w-full py-5 bg-white border border-gray-100 text-gray-400 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-gray-50 transition-all">
+              Membership Signup
             </button>
-            <div className="pt-8 mt-8 border-t border-hannam-border">
-               <button onClick={() => onAdminLogin(UserRole.SUPER_ADMIN)} className="text-hannam-subtext text-[10px] font-bold uppercase tracking-[0.3em] hover:text-hannam-green transition-colors">Administrator Access</button>
+            <div className="pt-8 mt-8 border-t border-gray-50">
+               <button onClick={() => setMode('admin')} className="text-gray-300 text-[10px] font-bold uppercase tracking-[0.3em] hover:text-hannam-green transition-colors flex items-center justify-center gap-2 mx-auto">
+                 <Lock className="w-3 h-3" /> Staff Administration
+               </button>
             </div>
           </div>
+        )}
+
+        {mode === 'admin' && (
+          <form onSubmit={handleAdminSubmit} className="space-y-6 animate-fade-in text-left">
+            <div className="p-8 bg-gray-50 rounded-2xl border border-gray-100 space-y-4">
+               <p className="text-xs font-bold text-gray-500 mb-2 text-center">관리자 전용 보안 접속 구역입니다.</p>
+               <input 
+                 type="email" 
+                 placeholder="관리자 이메일" 
+                 required 
+                 value={adminEmail} 
+                 onChange={e => setAdminEmail(e.target.value)} 
+                 className="w-full px-5 py-4 bg-white rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none" 
+               />
+               <input 
+                 type="password" 
+                 placeholder="비밀번호" 
+                 required 
+                 value={adminPassword} 
+                 onChange={e => setAdminPassword(e.target.value)} 
+                 className="w-full px-5 py-4 bg-white rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none" 
+               />
+               <button type="submit" className="w-full py-5 bg-gray-900 text-white rounded-xl font-bold text-[11px] uppercase tracking-widest shadow-xl">
+                 Admin 인증 및 입장
+               </button>
+            </div>
+            <button type="button" onClick={() => setMode('select')} className="w-full text-[9px] font-bold text-gray-300 uppercase tracking-widest text-center">Back to Previous Step</button>
+          </form>
         )}
 
         {(mode === 'member' || mode === 'signup') && (
            <form onSubmit={mode === 'member' ? handleLoginSubmit : handleSignupSubmit} className="space-y-5 text-left animate-fade-in">
               {mode === 'signup' && (
                  <div className="grid grid-cols-2 gap-4">
-                    <input type="text" placeholder="성함" required value={signupData.name} onChange={e => setSignupData({...signupData, name: e.target.value})} className="w-full px-5 py-4 bg-hannam-gray-bg rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none" />
-                    <select value={signupData.gender} onChange={e => setSignupData({...signupData, gender: e.target.value})} className="w-full px-5 py-4 bg-hannam-gray-bg rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none"><option>여성</option><option>남성</option></select>
+                    <input type="text" placeholder="성함" required value={signupData.name} onChange={e => setSignupData({...signupData, name: e.target.value})} className="w-full px-5 py-4 bg-gray-50 rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none" />
+                    <select value={signupData.gender} onChange={e => setSignupData({...signupData, gender: e.target.value})} className="w-full px-5 py-4 bg-gray-50 rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none"><option>여성</option><option>남성</option></select>
                  </div>
               )}
-              <input type="text" placeholder="연락처 (ID)" required value={mode === 'member' ? memberId : signupData.phone} onChange={e => mode === 'member' ? setMemberId(e.target.value) : setSignupData({...signupData, phone: e.target.value})} className="w-full px-5 py-4 bg-hannam-gray-bg rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none" />
-              {mode === 'signup' && <input type="email" placeholder="이메일" required value={signupData.email} onChange={e => setSignupData({...signupData, email: e.target.value})} className="w-full px-5 py-4 bg-hannam-gray-bg rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none" />}
-              <input type="password" placeholder="비밀번호" required value={mode === 'member' ? password : signupData.password} onChange={e => mode === 'member' ? setPassword(e.target.value) : setSignupData({...signupData, password: e.target.value})} className="w-full px-5 py-4 bg-hannam-gray-bg rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none" />
+              <input type="text" placeholder="연락처 (핸드폰 번호)" required value={mode === 'member' ? memberId : signupData.phone} onChange={e => mode === 'member' ? setMemberId(e.target.value) : setSignupData({...signupData, phone: e.target.value})} className="w-full px-5 py-4 bg-gray-50 rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none num-clean" />
+              {mode === 'signup' && <input type="email" placeholder="이메일" required value={signupData.email} onChange={e => setSignupData({...signupData, email: e.target.value})} className="w-full px-5 py-4 bg-gray-50 rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none" />}
+              <input type="password" placeholder="비밀번호" required value={mode === 'member' ? memberPassword : signupData.password} onChange={e => mode === 'member' ? setMemberPassword(e.target.value) : setSignupData({...signupData, password: e.target.value})} className="w-full px-5 py-4 bg-gray-50 rounded-xl font-bold text-xs border border-transparent focus:border-hannam-gold outline-none" />
               <button type="submit" className="w-full py-5 bg-hannam-green text-white rounded-xl font-bold text-[11px] uppercase tracking-[0.2em] mt-4 shadow-xl">
-                 {mode === 'member' ? 'Authenticate & Enter' : 'Complete Private Join'}
+                 {mode === 'member' ? 'Authenticate & Enter' : 'Complete Registration'}
               </button>
-              <button type="button" onClick={() => setMode('select')} className="w-full text-[9px] font-bold text-hannam-subtext uppercase tracking-widest text-center mt-4">Back to Previous Step</button>
+              <button type="button" onClick={() => setMode('select')} className="w-full text-[9px] font-bold text-gray-300 uppercase tracking-widest text-center mt-4">Back to Previous Step</button>
            </form>
         )}
       </div>
@@ -143,12 +176,21 @@ const App: React.FC = () => {
 
   useEffect(() => { setUser(authService.getCurrentUser()); setIsLoading(false); }, []);
 
-  const handleAdminLogin = async (role: UserRole) => { const loggedUser = await authService.adminLogin('admin@thehannam.com', role); setUser(loggedUser); };
+  const handleAdminLogin = async (email: string, pw: string) => { 
+    try {
+      const loggedUser = await authService.adminLogin(email, pw); 
+      setUser(loggedUser); 
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
   const handleMemberLogin = async (id: string, pw: string) => { try { const loggedUser = await authService.memberLogin(id, pw); setUser(loggedUser); } catch (e: any) { alert(e.message); } };
   const handleMemberSignup = async (data: any) => { await dbService.registerMember(data); };
   const handleLogout = () => { authService.logout(); setUser(null); };
 
   if (isLoading) return null;
+
+  const isAdmin = user && [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF].includes(user.role);
 
   return (
     <HashRouter>
@@ -156,7 +198,7 @@ const App: React.FC = () => {
         <Routes><Route path="*" element={<LoginScreen onAdminLogin={handleAdminLogin} onMemberLogin={handleMemberLogin} onMemberSignup={handleMemberSignup} />} /></Routes>
       ) : (
         <>
-          {[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF].includes(user.role) ? (
+          {isAdmin ? (
             <AdminLayout user={user} onLogout={handleLogout}>
               <Routes>
                 <Route path="/admin" element={<AdminDashboard />} />
@@ -169,6 +211,7 @@ const App: React.FC = () => {
                 <Route path="/admin/contract/new" element={<ContractCreator />} />
                 <Route path="/admin/care-session/:resId" element={<AdminCareSession />} />
                 <Route path="/admin/care-result/:id" element={<AdminCareResult />} />
+                <Route path="/admin/inquiries" element={<AdminInquiries />} />
                 <Route path="*" element={<Navigate to="/admin" />} />
               </Routes>
             </AdminLayout>

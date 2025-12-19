@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { dbService, generateHannamFilename } from '../../services/dbService';
 import { Contract, ContractTemplate } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Plus, Search, Download, Calendar, Mail, Upload, X } from 'lucide-react';
+import { FileText, Plus, Search, Download, Calendar, Mail, Upload, X, Trash2, Edit3 } from 'lucide-react';
 
 export const ContractDashboard: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -12,10 +12,13 @@ export const ContractDashboard: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [resendingId, setResendingId] = useState<string | null>(null);
-  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const [newTemplateTitle, setNewTemplateTitle] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Modal states
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [newTemplateTitle, setNewTemplateTitle] = useState('');
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => { loadData(); }, []);
@@ -45,14 +48,46 @@ export const ContractDashboard: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleTemplateAction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTemplateTitle) return;
+
+    if (editingTemplateId) {
+      await dbService.updateTemplate(editingTemplateId, { title: newTemplateTitle });
+      alert('템플릿이 수정되었습니다.');
+    } else {
+      // For creation, we still use file upload logic below via ref
+      alert('파일을 선택하여 업로드를 완료해주세요.');
+      return;
+    }
+    
+    setIsTemplateModalOpen(false);
+    setEditingTemplateId(null);
+    setNewTemplateTitle('');
+    loadData();
+  };
+
   const handleTemplateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !newTemplateTitle) return;
     await dbService.uploadTemplate(newTemplateTitle, file);
-    alert('템플릿이 등록되었습니다.');
+    alert('신규 템플릿이 등록되었습니다.');
     setIsTemplateModalOpen(false);
     setNewTemplateTitle('');
     loadData();
+  };
+
+  const handleEditTemplate = (tmpl: ContractTemplate) => {
+    setEditingTemplateId(tmpl.id);
+    setNewTemplateTitle(tmpl.title);
+    setIsTemplateModalOpen(true);
+  };
+
+  const handleDeleteTemplate = async (id: string, title: string) => {
+    if (confirm(`'${title}' 템플릿을 영구적으로 삭제하시겠습니까?\n이 작업은 취소할 수 없습니다.`)) {
+      await dbService.deleteTemplate(id);
+      loadData();
+    }
   };
 
   const availableMonths = Array.from(new Set(contracts.map(c => c.yearMonth))).sort().reverse();
@@ -146,7 +181,7 @@ export const ContractDashboard: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
              <div 
-               onClick={() => setIsTemplateModalOpen(true)}
+               onClick={() => { setEditingTemplateId(null); setNewTemplateTitle(''); setIsTemplateModalOpen(true); }}
                className="bg-white p-12 rounded-[40px] border-2 border-dashed border-gray-100 hover:border-hannam-gold cursor-pointer transition-all flex flex-col items-center justify-center text-center group"
              >
                 <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300 group-hover:bg-hannam-gold group-hover:text-white transition-all mb-6">
@@ -163,7 +198,8 @@ export const ContractDashboard: React.FC = () => {
                   <h4 className="text-lg font-bold text-gray-900 mb-2">{tmpl.title}</h4>
                   <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{tmpl.pdfName}</p>
                   <div className="absolute top-6 right-6 flex gap-2">
-                     <button className="p-2 text-gray-200 hover:text-gray-900 transition-colors"><Download className="w-4 h-4" /></button>
+                     <button onClick={() => handleEditTemplate(tmpl)} className="p-2 text-gray-200 hover:text-hannam-gold transition-colors" title="수정"><Edit3 className="w-4 h-4" /></button>
+                     <button onClick={() => handleDeleteTemplate(tmpl.id, tmpl.title)} className="p-2 text-gray-200 hover:text-red-500 transition-colors" title="삭제"><Trash2 className="w-4 h-4" /></button>
                   </div>
                </div>
              ))}
@@ -171,31 +207,44 @@ export const ContractDashboard: React.FC = () => {
         )}
       </div>
 
-      {/* Template Upload Modal */}
+      {/* Template Upload/Edit Modal */}
       {isTemplateModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
            <div className="bg-white w-full max-w-md rounded-[40px] p-12 shadow-2xl animate-in zoom-in-95">
               <div className="flex justify-between items-center mb-10">
-                 <h2 className="text-xl font-serif font-bold text-gray-900 uppercase tracking-widest">Upload Template</h2>
+                 <h2 className="text-xl font-serif font-bold text-gray-900 uppercase tracking-widest">
+                   {editingTemplateId ? 'Edit Template' : 'Upload Template'}
+                 </h2>
                  <button onClick={() => setIsTemplateModalOpen(false)}><X className="w-6 h-6 text-gray-300" /></button>
               </div>
-              <div className="space-y-6">
+              <form onSubmit={handleTemplateAction} className="space-y-6">
                  <div>
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Template Title</label>
-                    <input type="text" value={newTemplateTitle} onChange={e => setNewTemplateTitle(e.target.value)} placeholder="예: 골드 멤버십 계약서" className="w-full p-4 bg-gray-50 rounded-xl font-bold outline-none" />
+                    <input type="text" value={newTemplateTitle} onChange={e => setNewTemplateTitle(e.target.value)} placeholder="예: 골드 멤버십 계약서" className="w-full p-4 bg-gray-50 rounded-xl font-bold outline-none border border-transparent focus:border-hannam-gold" required />
                  </div>
-                 <div className="p-10 border-2 border-dashed border-gray-100 rounded-3xl flex flex-col items-center">
-                    <input type="file" ref={fileInputRef} onChange={handleTemplateUpload} accept=".pdf" className="hidden" />
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={!newTemplateTitle}
-                      className="px-8 py-3 bg-[#1A362E] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
-                    >
-                      Select PDF File
-                    </button>
-                    <p className="text-[9px] text-gray-300 mt-4 font-bold">제목을 먼저 입력해주세요.</p>
-                 </div>
-              </div>
+                 
+                 {!editingTemplateId ? (
+                   <div className="p-10 border-2 border-dashed border-gray-100 rounded-3xl flex flex-col items-center">
+                      <input type="file" ref={fileInputRef} onChange={handleTemplateUpload} accept=".pdf" className="hidden" />
+                      <button 
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={!newTemplateTitle}
+                        className="px-8 py-3 bg-[#1A362E] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+                      >
+                        Select PDF File
+                      </button>
+                      <p className="text-[9px] text-gray-300 mt-4 font-bold">제목을 먼저 입력해주세요.</p>
+                   </div>
+                 ) : (
+                   <button 
+                     type="submit"
+                     className="w-full py-4 bg-[#1A362E] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg"
+                   >
+                     수정 완료
+                   </button>
+                 )}
+              </form>
            </div>
         </div>
       )}

@@ -1,18 +1,71 @@
 
 import React, { useEffect, useState } from 'react';
 import { dbService } from '../../services/dbService';
-import { Calendar, Clock, AlertCircle, TrendingDown, ChevronRight, User } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, TrendingDown, ChevronRight, User, Settings, Edit3, Trash2, Plus, X, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { ContractTemplate } from '../../types';
 
 export const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [reservations, setReservations] = useState<any[]>([]);
+  const [templates, setTemplates] = useState<ContractTemplate[]>([]);
+  const [isSettingModalOpen, setIsSettingModalOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<ContractTemplate | null>(null);
+  const [newTemplateTitle, setNewTemplateTitle] = useState('');
+  
   const navigate = useNavigate();
 
   useEffect(() => {
-    dbService.getDashboardStats().then(setStats);
-    dbService.getReservations().then(res => setReservations(res.filter(r => r.status === 'booked')));
+    loadDashboardData();
   }, []);
+
+  const loadDashboardData = async () => {
+    const [s, r, t] = await Promise.all([
+      dbService.getDashboardStats(),
+      dbService.getReservations(),
+      dbService.getTemplates()
+    ]);
+    setStats(s);
+    setReservations(r.filter(res => res.status === 'booked'));
+    setTemplates(t);
+  };
+
+  const handleEditTemplate = (tmpl: ContractTemplate) => {
+    setEditingTemplate(tmpl);
+    setNewTemplateTitle(tmpl.title);
+    setIsSettingModalOpen(true);
+  };
+
+  const handleSaveTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTemplateTitle) return;
+
+    if (editingTemplate) {
+      await dbService.updateTemplate(editingTemplate.id, { title: newTemplateTitle });
+      alert('상품 정보가 수정되었습니다.');
+    } else {
+      // 신규 등록 로직 (간이 등록)
+      await dbService.saveTemplate({
+        title: newTemplateTitle,
+        type: 'MEMBERSHIP',
+        pdfName: 'manual_entry.pdf',
+        contentBody: '시스템 관리자에 의해 수동 등록된 상품입니다.'
+      });
+      alert('신규 상품이 등록되었습니다.');
+    }
+    
+    setIsSettingModalOpen(false);
+    setEditingTemplate(null);
+    setNewTemplateTitle('');
+    loadDashboardData();
+  };
+
+  const handleDeleteTemplate = async (id: string, title: string) => {
+    if (confirm(`'${title}' 상품을 시스템에서 제거하시겠습니까?`)) {
+      await dbService.deleteTemplate(id);
+      loadDashboardData();
+    }
+  };
 
   if (!stats) return (
     <div className="min-h-screen flex items-center justify-center bg-hannam-bg">
@@ -62,7 +115,7 @@ export const AdminDashboard: React.FC = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-12 gap-8">
+        <div className="grid grid-cols-12 gap-8 mb-12">
           {/* Main Content Area - Schedule */}
           <div className="col-span-8 card-minimal p-10">
             <div className="flex justify-between items-center mb-10">
@@ -145,7 +198,87 @@ export const AdminDashboard: React.FC = () => {
              </div>
           </div>
         </div>
+
+        {/* NEW SECTION: System Membership Configuration */}
+        <section className="card-minimal p-10 animate-fade-in border-t-4 border-t-hannam-gold">
+           <div className="flex justify-between items-center mb-10">
+              <div className="flex items-center gap-3">
+                 <Settings className="w-5 h-5 text-hannam-gold" />
+                 <div>
+                    <h3 className="text-lg font-serif text-hannam-green uppercase tracking-widest">System Configuration: Membership Plans</h3>
+                    <p className="text-[10px] text-hannam-subtext font-bold uppercase tracking-widest mt-1">센터 운영을 위한 멤버십 상품 및 계약 유형 설정</p>
+                 </div>
+              </div>
+              <button 
+                onClick={() => { setEditingTemplate(null); setNewTemplateTitle(''); setIsSettingModalOpen(true); }}
+                className="px-6 py-3 bg-hannam-green text-white rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-black transition-all shadow-md"
+              >
+                 <Plus className="w-4 h-4" /> 신규 상품 등록
+              </button>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {templates.map(tmpl => (
+                <div key={tmpl.id} className="p-6 bg-hannam-gray-bg rounded-2xl border border-hannam-border flex items-center justify-between group hover:border-hannam-gold transition-all">
+                   <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-hannam-gold shadow-sm">
+                         <FileText className="w-5 h-5" />
+                      </div>
+                      <div>
+                         <p className="text-[13px] font-bold text-hannam-text">{tmpl.title}</p>
+                         <p className="text-[9px] text-hannam-subtext uppercase tracking-widest mt-0.5">{tmpl.type}</p>
+                      </div>
+                   </div>
+                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => handleEditTemplate(tmpl)} className="p-2 text-hannam-subtext hover:text-hannam-green transition-colors"><Edit3 className="w-4 h-4"/></button>
+                      <button onClick={() => handleDeleteTemplate(tmpl.id, tmpl.title)} className="p-2 text-hannam-subtext hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4"/></button>
+                   </div>
+                </div>
+              ))}
+              {templates.length === 0 && (
+                <div className="col-span-3 py-20 text-center text-hannam-subtext font-serif italic text-sm border border-dashed border-hannam-border rounded-xl">
+                   등록된 멤버십 상품이 없습니다.
+                </div>
+              )}
+           </div>
+        </section>
       </div>
+
+      {/* Membership Setting Modal */}
+      {isSettingModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+           <form onSubmit={handleSaveTemplate} className="bg-white w-full max-w-md rounded-[40px] p-12 shadow-2xl animate-in zoom-in-95">
+              <div className="flex justify-between items-center mb-10">
+                 <div>
+                    <h2 className="text-xl font-serif font-bold text-hannam-green uppercase tracking-wider">
+                       {editingTemplate ? 'Edit Membership Plan' : 'Add New Plan'}
+                    </h2>
+                    <p className="text-[10px] text-hannam-gold font-bold uppercase tracking-widest mt-1">Hannam Intelligence Registry</p>
+                 </div>
+                 <button type="button" onClick={() => setIsSettingModalOpen(false)}><X className="w-6 h-6 text-gray-300" /></button>
+              </div>
+              <div className="space-y-8">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Plan Name (상품명)</label>
+                    <input 
+                      type="text" 
+                      value={newTemplateTitle} 
+                      onChange={e => setNewTemplateTitle(e.target.value)} 
+                      placeholder="예: VIP 12개월 골드 멤버십" 
+                      className="w-full p-4 bg-gray-50 rounded-xl font-bold text-xs outline-none border border-transparent focus:border-hannam-gold transition-all" 
+                      required 
+                    />
+                 </div>
+                 <p className="text-[9px] text-gray-300 italic">
+                   * 신규 등록 시 기본 계약서 양식이 자동 할당됩니다. 상세 PDF 파일 업로드는 'Contracts > 템플릿 관리' 메뉴에서 가능합니다.
+                 </p>
+                 <button type="submit" className="w-full py-5 bg-[#1A362E] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-xl hover:bg-black transition-all">
+                    {editingTemplate ? '수정 완료' : '신규 상품 등록'}
+                 </button>
+              </div>
+           </form>
+        </div>
+      )}
     </div>
   );
 };

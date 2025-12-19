@@ -11,7 +11,10 @@ import {
   Clock,
   FileText,
   ChevronRight,
-  Info
+  Info,
+  UserCheck,
+  MessageSquare,
+  Sparkles
 } from 'lucide-react';
 import { SignaturePad } from '../../components/SignaturePad';
 
@@ -29,7 +32,7 @@ export const MemberPortal: React.FC = () => {
   const currentUser = authService.getCurrentUser();
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser || currentUser.role !== 'MEMBER') {
       navigate('/');
       return;
     }
@@ -79,6 +82,12 @@ export const MemberPortal: React.FC = () => {
     });
   };
 
+  const getRecentCompletedNotes = () => {
+    return history
+      .filter(h => h.status === CareStatus.COMPLETED)
+      .slice(0, 3);
+  };
+
   const getTierInfo = (tier: MemberTier) => {
     switch (tier) {
       case MemberTier.ROYAL: return { discount: '20%', next: null, target: 0 };
@@ -90,6 +99,7 @@ export const MemberPortal: React.FC = () => {
   if (!member) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-widest text-xs">Loading Hannam Portal...</div>;
 
   const tierInfo = getTierInfo(member.tier);
+  const recentNotes = getRecentCompletedNotes();
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] font-sans text-hannam-text pb-32">
@@ -99,8 +109,12 @@ export const MemberPortal: React.FC = () => {
           <h1 className="text-[11px] font-serif font-bold tracking-[0.2em] text-hannam-green uppercase">WELLNESS, THE HANNAM</h1>
           <p className="text-[9px] text-hannam-gold font-bold uppercase tracking-widest">Private Member Console</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
            <button onClick={loadMemberData} className="p-2 text-gray-300 active:scale-95 transition-transform"><RefreshCw className="w-4 h-4" /></button>
+           <div className="text-right border-r border-gray-100 pr-3">
+              <p className="text-[11px] font-bold text-gray-900 leading-none">{member.name}</p>
+              <p className="text-[8px] font-black text-hannam-gold uppercase tracking-widest mt-1">ID: {member.phone}</p>
+           </div>
            <div className="w-8 h-8 bg-hannam-green rounded-lg flex items-center justify-center text-white text-[11px] font-serif">{member.name[0]}</div>
         </div>
       </header>
@@ -109,7 +123,7 @@ export const MemberPortal: React.FC = () => {
         
         {activeTab === 'home' && (
           <div className="space-y-8 animate-fade-in">
-            {/* 1. 싸인 알람 (Signature Pending) - 최상단 고정 */}
+            {/* 1. 싸인 알람 */}
             {pendingRecord && (
               <section>
                 <div className="bg-white rounded-2xl shadow-xl border border-red-50 p-6 space-y-5">
@@ -143,7 +157,7 @@ export const MemberPortal: React.FC = () => {
               </section>
             )}
 
-            {/* 2. 멤버십 한도 카드 (이미지 1 스타일 반영) */}
+            {/* 2. 멤버십 한도 카드 */}
             <section>
               <div className="bg-hannam-green rounded-2xl p-8 text-white min-h-[200px] flex flex-col justify-between shadow-2xl relative overflow-hidden">
                 <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mb-16" />
@@ -167,7 +181,7 @@ export const MemberPortal: React.FC = () => {
               </div>
             </section>
 
-            {/* 3. 멤버십 혜택 현황 (이미지 2 스타일 반영) */}
+            {/* 3. 멤버십 혜택 현황 */}
             <section className="bg-white rounded-2xl border border-gray-100 p-8 shadow-sm space-y-6">
                <h4 className="text-xl font-serif font-bold text-hannam-green border-b border-gray-50 pb-4">Membership Benefits</h4>
                <div className="flex items-center gap-3">
@@ -181,18 +195,52 @@ export const MemberPortal: React.FC = () => {
                    <p className="text-[13px] text-slate-600 leading-relaxed font-medium">
                      Deposit an additional <span className="font-bold text-slate-900 num-clean">₩{(tierInfo.target - member.deposit).toLocaleString()}</span> to upgrade to the next tier with <span className="font-bold text-slate-900">20% discount</span> benefits.
                    </p>
-                   <p className="text-[10px] text-slate-300 leading-relaxed italic">
-                     Note: Discount rates are calculated based on cumulative deposits and are automatically applied to all services and product payments.
-                   </p>
                  </div>
                )}
             </section>
 
-            {/* 4. 금주 예약 일정 (스크롤 시 노출) */}
+            {/* NEW: Recent Care Notes Summary Section */}
+            <section className="space-y-4">
+               <div className="flex justify-between items-end px-1">
+                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Recent Care Recap</h3>
+                  <button onClick={() => setActiveTab('notes')} className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">More Details</button>
+               </div>
+               <div className="space-y-3">
+                  {recentNotes.length > 0 ? recentNotes.map(note => (
+                    <div key={note.id} className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm hover:border-hannam-gold transition-colors">
+                       <div className="flex justify-between items-start mb-3">
+                          <div className="flex items-center gap-2">
+                             <div className="p-1.5 bg-gray-50 rounded-lg">
+                                <MessageSquare className="w-3 h-3 text-hannam-gold" />
+                             </div>
+                             <span className="text-[11px] font-black text-gray-900">{note.content}</span>
+                          </div>
+                          <span className="text-[9px] font-bold text-gray-300 num-clean">{note.date}</span>
+                       </div>
+                       <p className="text-[11px] text-gray-500 leading-relaxed font-medium line-clamp-2 italic">
+                         "{note.feedback || '세션이 안전하게 완료되었습니다.'}"
+                       </p>
+                       <div className="mt-4 flex items-center justify-between pt-3 border-t border-gray-50">
+                          <div className="flex items-center gap-1.5">
+                             <UserCheck className="w-3 h-3 text-hannam-green opacity-40" />
+                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Therapist: {note.therapistName}</span>
+                          </div>
+                          <Sparkles className="w-3 h-3 text-hannam-gold/30" />
+                       </div>
+                    </div>
+                  )) : (
+                    <div className="py-12 text-center bg-gray-50/30 rounded-2xl border border-dashed border-gray-100">
+                       <p className="text-[11px] text-gray-300 font-medium italic">최근 케어 기록이 존재하지 않습니다.</p>
+                    </div>
+                  )}
+               </div>
+            </section>
+
+            {/* 4. 금주 예약 일정 */}
             <section className="space-y-4">
                <div className="flex justify-between items-end px-1">
                   <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Weekly Schedule</h3>
-                  <button onClick={() => setActiveTab('history')} className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">View All</button>
+                  <button onClick={() => setActiveTab('home')} className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">Update</button>
                </div>
                <div className="space-y-3">
                   {getWeeklyReservations().length > 0 ? getWeeklyReservations().map(res => (
@@ -215,50 +263,33 @@ export const MemberPortal: React.FC = () => {
                </div>
             </section>
 
-            {/* 5. 최근 케어 노트 요약 (3개) */}
-            <section className="space-y-4">
-               <div className="flex justify-between items-end px-1">
-                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Recent Care Notes</h3>
-                  <button onClick={() => setActiveTab('notes')} className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">Archive</button>
-               </div>
-               <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-                  {history.filter(h => h.status === CareStatus.COMPLETED).slice(0, 3).map(note => (
-                    <div key={note.id} className="min-w-[280px] bg-white border border-gray-100 p-6 rounded-2xl shadow-sm space-y-4">
-                       <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">{note.date}</span>
-                          <span className="text-[9px] font-bold text-gray-300">{note.therapistName}</span>
-                       </div>
-                       <h4 className="text-xs font-bold text-gray-900 line-clamp-1">{note.content}</h4>
-                       <p className="text-[11px] text-gray-500 italic line-clamp-2 leading-relaxed">"{note.feedback || '세션 완료'}"</p>
+            {/* 5. 개인 웰니스 플랜 */}
+            <section className="bg-[#FBFBFB] rounded-2xl p-6 border border-gray-100 shadow-inner">
+               <div className="flex justify-between items-start mb-6">
+                  <div className="flex items-center gap-2">
+                     <Info className="w-3.5 h-3.5 text-hannam-gold" />
+                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Personal Wellness Plan</h4>
+                  </div>
+                  {member.lastModifiedBy && (
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-gray-50 rounded-md">
+                       <UserCheck className="w-2.5 h-2.5 text-hannam-green" />
+                       <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Manager: {member.lastModifiedBy}</span>
                     </div>
-                  ))}
-                  {history.filter(h => h.status === CareStatus.COMPLETED).length === 0 && (
-                     <div className="w-full py-10 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                        <p className="text-[11px] text-gray-300 font-medium italic">기록된 케어 노트가 없습니다.</p>
-                     </div>
                   )}
                </div>
-            </section>
-
-            {/* 6. 다음 추천 관리 (관리자 설정값 노출) */}
-            <section className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
-               <div className="flex items-center gap-2 mb-4">
-                  <Info className="w-3.5 h-3.5 text-hannam-gold" />
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Personal Wellness Plan</h4>
-               </div>
-               <div className="space-y-4">
-                  <div>
-                    <p className="text-[10px] font-bold text-gray-400 mb-1">Focus Goal</p>
-                    <p className="text-xs font-bold text-slate-900">{member.coreGoal || '설정된 목표가 없습니다.'}</p>
+               <div className="space-y-5">
+                  <div className="bg-white p-4 rounded-xl border border-gray-50">
+                    <p className="text-[9px] font-black text-hannam-gold mb-1.5 uppercase tracking-widest">Focus Goal</p>
+                    <p className="text-xs font-bold text-slate-900 leading-relaxed">{member.coreGoal || '설정된 목표가 없습니다.'}</p>
                   </div>
-                  <div className="pt-3 border-t border-gray-200">
-                    <p className="text-[10px] font-bold text-hannam-gold mb-1">Recommended Next Care</p>
-                    <p className="text-xs font-bold text-hannam-green">{member.aiRecommended || '담당자 추천 대기 중'}</p>
+                  <div className="bg-white p-4 rounded-xl border border-gray-50">
+                    <p className="text-[9px] font-black text-hannam-gold mb-1.5 uppercase tracking-widest">Expert Recommended Care</p>
+                    <p className="text-xs font-bold text-hannam-green leading-relaxed">{member.aiRecommended || '담당 전문가의 추천을 기다리는 중입니다.'}</p>
                   </div>
                </div>
             </section>
 
-            {/* 로그아웃 버튼 (홈 화면 최하단에 단 한 번만 노출) */}
+            {/* 로그아웃 버튼 */}
             <div className="pt-16 pb-6 text-center">
               <button 
                 onClick={() => { if(confirm('로그아웃 하시겠습니까?')) { authService.logout(); navigate('/'); } }}
@@ -320,7 +351,7 @@ export const MemberPortal: React.FC = () => {
         )}
       </main>
 
-      {/* Floating Navigation Bar: 홈 / 예약 내역 / 케어 노트 */}
+      {/* Floating Navigation Bar */}
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-hannam-green text-white px-8 py-4 rounded-2xl shadow-2xl flex justify-between items-center z-[100] border border-white/5 backdrop-blur-md bg-opacity-95">
          {[
            { id: 'home', icon: LayoutGrid, label: 'Home' },
