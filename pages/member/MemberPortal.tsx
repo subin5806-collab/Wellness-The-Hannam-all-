@@ -4,15 +4,7 @@ import { dbService } from '../../services/dbService';
 import { authService } from '../../services/authService';
 import { Member, CareRecord, Reservation, CareStatus } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import { 
-  LayoutGrid, 
-  RefreshCw,
-  Clock,
-  ChevronRight,
-  UserCheck,
-  MessageSquare,
-  Sparkles
-} from 'lucide-react';
+import { LayoutGrid, RefreshCw, Clock, ChevronRight, UserCheck, MessageSquare, Sparkles } from 'lucide-react';
 import { SignaturePad } from '../../components/SignaturePad';
 
 export const MemberPortal: React.FC = () => {
@@ -29,10 +21,7 @@ export const MemberPortal: React.FC = () => {
   const currentUser = authService.getCurrentUser();
 
   useEffect(() => {
-    if (!currentUser || currentUser.role !== 'MEMBER') {
-      navigate('/');
-      return;
-    }
+    if (!currentUser || currentUser.role !== 'MEMBER') { navigate('/'); return; }
     loadMemberData();
   }, [currentUser]);
 
@@ -43,7 +32,6 @@ export const MemberPortal: React.FC = () => {
       dbService.getMemberCareHistory(currentUser.id),
       dbService.getReservations(currentUser.id)
     ]);
-
     if (m) {
       setMember(m);
       setHistory(h);
@@ -62,36 +50,13 @@ export const MemberPortal: React.FC = () => {
       setPendingRecord(null);
       setSignature('');
       await loadMemberData();
-    } catch (e) {
-      alert('처리 중 오류가 발생했습니다.');
-    } finally {
-      setIsProcessing(false);
-    }
+    } catch (e) { alert('처리 중 오류가 발생했습니다.'); } finally { setIsProcessing(false); }
   };
 
-  const getWeeklyReservations = () => {
-    const today = new Date();
-    const nextWeek = new Date();
-    nextWeek.setDate(today.getDate() + 7);
-    return reservations.filter(res => {
-      const resDate = new Date(res.dateTime);
-      return resDate >= today && resDate <= nextWeek && res.status === 'booked';
-    });
-  };
-
-  const getRecentCompletedNotes = () => {
-    return history
-      .filter(h => h.status === CareStatus.COMPLETED)
-      .slice(0, 3);
-  };
-
-  if (!member) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-widest text-xs">Loading Hannam Portal...</div>;
-
-  const recentNotes = getRecentCompletedNotes();
+  if (!member) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold tracking-widest animate-pulse uppercase text-xs">Authenticating Portal...</div>;
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] font-sans text-hannam-text pb-32">
-      {/* Header */}
       <header className="px-6 py-5 flex justify-between items-center bg-white sticky top-0 z-[60] border-b border-gray-100 shadow-sm">
         <div className="flex flex-col">
           <h1 className="text-[11px] font-serif font-bold tracking-[0.2em] text-hannam-green uppercase">WELLNESS, THE HANNAM</h1>
@@ -101,201 +66,115 @@ export const MemberPortal: React.FC = () => {
            <button onClick={loadMemberData} className="p-2 text-gray-300 active:scale-95 transition-transform"><RefreshCw className="w-4 h-4" /></button>
            <div className="text-right border-r border-gray-100 pr-3">
               <p className="text-[11px] font-bold text-gray-900 leading-none">{member.name}</p>
-              <p className="text-[8px] font-black text-hannam-gold uppercase tracking-widest mt-1">ID: {member.phone}</p>
+              <p className="text-[8px] font-black text-hannam-gold mt-1 uppercase tracking-tighter">ID: {member.phone}</p>
            </div>
-           <div className="w-8 h-8 bg-hannam-green rounded-lg flex items-center justify-center text-white text-[11px] font-serif">{member.name[0]}</div>
+           <div className="w-8 h-8 bg-hannam-green rounded-lg flex items-center justify-center text-white text-[11px] font-serif uppercase">{member.name[0]}</div>
         </div>
       </header>
 
       <main className="px-5 py-6 space-y-8 max-w-lg mx-auto">
-        
         {activeTab === 'home' && (
           <div className="space-y-8 animate-fade-in">
-            {/* 1. 결제 승인 알림 */}
             {pendingRecord && (
-              <section>
-                <div className="bg-white rounded-2xl shadow-xl border border-red-50 p-6 space-y-5">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h2 className="text-lg font-bold text-red-600 leading-tight">결제 승인 대기</h2>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Authorization Required</p>
-                    </div>
-                    <span className="bg-red-500 text-white text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded">URGENT</span>
+              <section className="bg-white rounded-[32px] shadow-2xl border border-red-50 p-8 space-y-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-lg font-black text-red-600 leading-tight">결제 승인 대기</h2>
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Authorization Required</p>
                   </div>
-                  <div className="bg-gray-50 rounded-xl p-4 flex justify-between items-center border border-gray-100">
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-bold text-slate-900">{pendingRecord.content}</p>
-                      <p className="text-[10px] text-gray-400 font-medium">{pendingRecord.date} • {pendingRecord.therapistName}</p>
-                    </div>
-                    <p className="text-base font-black text-red-600 num-clean">-₩{pendingRecord.discountedPrice.toLocaleString()}</p>
-                  </div>
-                  <div className="h-44 bg-white rounded-xl border border-gray-200 overflow-hidden relative">
-                    <SignaturePad onSave={setSignature} onClear={() => setSignature('')} />
-                  </div>
-                  <button 
-                    onClick={handleSignComplete}
-                    disabled={!signature || isProcessing}
-                    className={`w-full py-4.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
-                      signature ? 'bg-hannam-green text-white shadow-lg' : 'bg-gray-100 text-gray-300'
-                    }`}
-                  >
-                    {isProcessing ? 'Processing...' : '서명 후 결제 승인'}
-                  </button>
+                  <span className="bg-red-500 text-white text-[8px] font-black uppercase px-2.5 py-1 rounded">URGENT</span>
                 </div>
+                <div className="bg-gray-50 rounded-2xl p-5 flex justify-between items-center border border-gray-100">
+                  <p className="text-xs font-bold text-slate-900">{pendingRecord.content}</p>
+                  <p className="text-base font-black text-red-600 num-clean">-₩{pendingRecord.discountedPrice.toLocaleString()}</p>
+                </div>
+                <div className="h-48 bg-white rounded-2xl border border-gray-200 overflow-hidden relative shadow-inner">
+                  <SignaturePad onSave={setSignature} onClear={() => setSignature('')} />
+                </div>
+                <button onClick={handleSignComplete} disabled={!signature || isProcessing} className={`w-full py-5 rounded-[20px] text-[11px] font-black uppercase tracking-widest transition-all ${signature ? 'bg-hannam-green text-white shadow-xl hover:bg-black' : 'bg-gray-100 text-gray-300'}`}>
+                  {isProcessing ? 'Processing...' : '서명 후 결제 승인'}
+                </button>
               </section>
             )}
 
-            {/* 2. 멤버십 잔액 카드 */}
-            <section>
-              <div className="bg-hannam-green rounded-2xl p-8 text-white min-h-[200px] flex flex-col justify-between shadow-2xl relative overflow-hidden">
+            <section className="bg-hannam-green rounded-[32px] p-10 text-white min-h-[220px] flex flex-col justify-between shadow-2xl relative overflow-hidden">
                 <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mb-16" />
                 <div>
                   <p className="text-[12px] font-medium text-white/70 mb-4 tracking-tight">{member.name}님 멤버십 잔액</p>
-                  <h3 className="text-5xl font-serif font-medium tracking-tight">
-                    <span className="text-3xl mr-1">₩</span>
-                    {member.remaining.toLocaleString()}
-                  </h3>
+                  <h3 className="text-5xl font-serif font-medium tracking-tight"><span className="text-3xl mr-1">₩</span>{member.remaining.toLocaleString()}</h3>
                 </div>
-                <div className="flex gap-12 pt-6 border-t border-white/10 mt-6">
-                  <div>
-                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mb-1">Total Deposit</p>
-                    <p className="text-[15px] font-medium num-clean">₩{member.deposit.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mb-1">Total Usage</p>
-                    <p className="text-[15px] font-medium num-clean text-red-400">₩{member.used.toLocaleString()}</p>
-                  </div>
+                <div className="flex gap-12 pt-6 border-t border-white/10 mt-8">
+                  <div><p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mb-1">Deposit</p><p className="text-[15px] font-medium num-clean">₩{member.deposit.toLocaleString()}</p></div>
+                  <div><p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mb-1">Usage</p><p className="text-[15px] font-medium num-clean text-red-400">₩{member.used.toLocaleString()}</p></div>
                 </div>
-              </div>
             </section>
 
-            {/* 3. 최근 케어 노트 요약 */}
             <section className="space-y-4">
                <div className="flex justify-between items-end px-1">
                   <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Recent Care Recap</h3>
-                  <button onClick={() => setActiveTab('notes')} className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">More Details</button>
                </div>
-               <div className="space-y-3">
-                  {recentNotes.length > 0 ? recentNotes.map(note => (
-                    <div key={note.id} className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm hover:border-hannam-gold transition-colors">
-                       <div className="flex justify-between items-start mb-3">
-                          <div className="flex items-center gap-2">
-                             <div className="p-1.5 bg-gray-50 rounded-lg">
-                                <MessageSquare className="w-3 h-3 text-hannam-gold" />
-                             </div>
-                             <span className="text-[11px] font-black text-gray-900">{note.content}</span>
-                          </div>
-                          <span className="text-[9px] font-bold text-gray-300 num-clean">{note.date}</span>
-                       </div>
-                       <p className="text-[11px] text-gray-500 leading-relaxed font-medium line-clamp-2 italic">
-                         "{note.feedback || '세션이 안전하게 완료되었습니다.'}"
-                       </p>
-                       <div className="mt-4 flex items-center justify-between pt-3 border-t border-gray-50">
-                          <div className="flex items-center gap-1.5">
-                             <UserCheck className="w-3 h-3 text-hannam-green opacity-40" />
-                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{note.therapistName} 테라피스트</span>
-                          </div>
-                          <Sparkles className="w-3 h-3 text-hannam-gold/30" />
-                       </div>
-                    </div>
-                  )) : (
-                    <div className="py-12 text-center bg-gray-50/30 rounded-2xl border border-dashed border-gray-100">
-                       <p className="text-[11px] text-gray-300 font-medium italic">최근 케어 기록이 존재하지 않습니다.</p>
-                    </div>
-                  )}
-               </div>
-            </section>
-
-            {/* 4. 금주 예약 일정 */}
-            <section className="space-y-4">
-               <div className="flex justify-between items-end px-1">
-                  <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Weekly Schedule</h3>
-               </div>
-               <div className="space-y-3">
-                  {getWeeklyReservations().length > 0 ? getWeeklyReservations().map(res => (
-                    <div key={res.id} className="bg-white border border-gray-100 p-5 rounded-xl flex items-center gap-4 shadow-sm">
-                       <div className="w-10 h-10 bg-gray-50 rounded-lg flex flex-col items-center justify-center">
-                          <span className="text-[8px] font-black text-gray-300 uppercase">{new Date(res.dateTime).toLocaleDateString('ko-KR', {month:'short'})}</span>
-                          <span className="text-sm font-black text-hannam-green num-clean leading-none">{new Date(res.dateTime).getDate()}</span>
-                       </div>
-                       <div className="flex-1">
-                          <p className="text-xs font-bold text-gray-900">{res.serviceType}</p>
-                          <p className="text-[10px] text-gray-400 font-medium">{new Date(res.dateTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} • {res.therapistName}</p>
-                       </div>
-                       <ChevronRight className="w-4 h-4 text-gray-200" />
-                    </div>
-                  )) : (
-                    <div className="py-8 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                       <p className="text-[11px] text-gray-300 font-medium italic">예정된 일정이 없습니다.</p>
-                    </div>
-                  )}
-               </div>
+               {history.filter(h => h.status === CareStatus.COMPLETED).slice(0, 2).map(note => (
+                  <div key={note.id} className="bg-white border border-gray-100 p-6 rounded-2xl shadow-sm">
+                     <div className="flex justify-between items-start mb-3">
+                        <span className="text-[11px] font-black text-gray-900">{note.content}</span>
+                        <span className="text-[9px] font-bold text-gray-300 num-clean">{note.date}</span>
+                     </div>
+                     <p className="text-[11px] text-gray-500 leading-relaxed font-medium italic">"{note.feedback || '세션이 안전하게 완료되었습니다.'}"</p>
+                  </div>
+               ))}
+               {history.filter(h => h.status === CareStatus.COMPLETED).length === 0 && (
+                  <div className="p-12 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-100 text-[10px] text-gray-300 font-bold uppercase italic">No recent history</div>
+               )}
             </section>
           </div>
         )}
 
-        {/* 히스토리 및 노트 탭 */}
         {activeTab === 'history' && (
           <div className="space-y-6 animate-fade-in">
-             <h3 className="text-lg font-serif font-bold text-hannam-green border-b border-gray-100 pb-3 uppercase tracking-wider">Reservation History</h3>
+             <h3 className="text-lg font-serif font-bold text-hannam-green border-b border-gray-100 pb-3 uppercase tracking-wider">Session History</h3>
              <div className="space-y-4">
                 {history.map(item => (
-                   <div key={item.id} className="bg-white p-5 rounded-xl border border-gray-100 flex justify-between items-center shadow-sm">
+                   <div key={item.id} className="bg-white p-6 rounded-2xl border border-gray-100 flex justify-between items-center shadow-sm">
                       <div className="space-y-1">
                          <p className="text-xs font-bold text-slate-900">{item.content}</p>
                          <p className="text-[10px] text-gray-400 font-medium">{item.date} • {item.therapistName}</p>
                       </div>
                       <div className="text-right">
                          <p className="text-sm font-black text-slate-900 num-clean">₩{item.discountedPrice.toLocaleString()}</p>
-                         <span className={`text-[8px] font-black uppercase tracking-widest ${item.status === CareStatus.COMPLETED ? 'text-hannam-green' : 'text-amber-500'}`}>
-                           {item.status}
-                         </span>
+                         <span className={`text-[8px] font-black uppercase tracking-widest ${item.status === CareStatus.COMPLETED ? 'text-hannam-green' : 'text-amber-500'}`}>{item.status}</span>
                       </div>
                    </div>
                 ))}
+                {history.length === 0 && <p className="text-center py-20 text-gray-300 font-bold uppercase italic text-xs">No records available</p>}
              </div>
           </div>
         )}
 
         {activeTab === 'notes' && (
           <div className="space-y-6 animate-fade-in">
-             <h3 className="text-lg font-serif font-bold text-hannam-green border-b border-gray-100 pb-3 uppercase tracking-wider">Care Notes Archive</h3>
+             <h3 className="text-lg font-serif font-bold text-hannam-green border-b border-gray-100 pb-3 uppercase tracking-wider">Expert Insights</h3>
              <div className="space-y-5">
-                {history.filter(h => h.status === CareStatus.COMPLETED).map(note => (
-                   <div key={note.id} className="bg-white rounded-xl border border-gray-100 p-6 space-y-4 shadow-sm">
-                      <div className="flex justify-between items-center">
-                         <span className="px-2.5 py-1 bg-gray-50 text-gray-400 rounded-md text-[9px] font-black uppercase tracking-widest">{note.content}</span>
-                         <span className="text-[10px] font-bold text-gray-300 num-clean">{note.date}</span>
-                      </div>
-                      <p className="text-xs font-medium text-gray-600 leading-relaxed italic">
-                         "{note.feedback || '세션 완료'}"
-                      </p>
-                      <div className="bg-[#FBF9F6] p-4 rounded-xl space-y-1.5 border border-hannam-gold/10">
-                         <p className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">Recommended Therapy</p>
-                         <p className="text-[11px] font-bold text-gray-500">{note.recommendation}</p>
-                      </div>
-                      <p className="text-right text-[9px] font-bold text-gray-300 uppercase tracking-widest">- {note.therapistName}</p>
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 space-y-6 shadow-xl border-t-4 border-t-hannam-gold">
+                   <div className="flex items-center gap-3">
+                      <Sparkles className="w-5 h-5 text-hannam-gold" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Personal Recommendation</span>
                    </div>
-                ))}
+                   <p className="text-xs font-bold text-gray-900 leading-relaxed italic border-l-2 border-hannam-gold/20 pl-4">{member.aiRecommended}</p>
+                   <p className="text-right text-[8px] font-black text-gray-300 uppercase tracking-widest">- HANNAM SPECIALIST CURATION</p>
+                </div>
              </div>
           </div>
         )}
       </main>
 
-      {/* Floating Navigation Bar */}
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-sm max-w-sm bg-hannam-green text-white px-6 py-4 rounded-2xl shadow-2xl flex justify-between items-center z-[100] border border-white/5 backdrop-blur-md bg-opacity-95">
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm bg-hannam-green text-white px-8 py-5 rounded-[24px] shadow-2xl flex justify-between items-center z-[100] backdrop-blur-md bg-opacity-95 border border-white/5">
          {[
            { id: 'home', icon: LayoutGrid, label: 'Home' },
            { id: 'history', icon: Clock, label: 'History' },
-           { id: 'notes', icon: MessageSquare, label: 'Notes' }
+           { id: 'notes', icon: Sparkles, label: 'Insights' }
          ].map(item => (
-           <button 
-             key={item.id}
-             onClick={() => setActiveTab(item.id as any)}
-             className={`flex flex-col items-center gap-1.5 transition-all active:scale-90 ${activeTab === item.id ? 'text-hannam-gold' : 'text-white/30'}`}
-           >
-              <item.icon className="w-5 h-5" />
-              <span className="text-[8px] font-bold uppercase tracking-widest whitespace-nowrap">{item.label}</span>
+           <button key={item.id} onClick={() => setActiveTab(item.id as any)} className={`flex flex-col items-center gap-2 transition-all active:scale-90 ${activeTab === item.id ? 'text-hannam-gold' : 'text-white/30'}`}>
+              <item.icon className="w-5 h-5" /><span className="text-[8px] font-bold uppercase tracking-widest">{item.label}</span>
            </button>
          ))}
       </nav>

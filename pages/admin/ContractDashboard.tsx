@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { dbService, generateHannamFilename } from '../../services/dbService';
 import { Contract, ContractTemplate } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Plus, Search, Download, Calendar, Mail, Upload, X, Trash2, Edit3 } from 'lucide-react';
+import { FileText, Plus, Search, Download, Calendar, Mail, Upload, X, Trash2, Edit3, Eye, Printer, ShieldCheck } from 'lucide-react';
 
 export const ContractDashboard: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -17,6 +17,9 @@ export const ContractDashboard: React.FC = () => {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [newTemplateTitle, setNewTemplateTitle] = useState('');
+  
+  // Contract View Modal
+  const [viewingContract, setViewingContract] = useState<Contract | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -56,7 +59,6 @@ export const ContractDashboard: React.FC = () => {
       await dbService.updateTemplate(editingTemplateId, { title: newTemplateTitle });
       alert('템플릿이 수정되었습니다.');
     } else {
-      // For creation, we still use file upload logic below via ref
       alert('파일을 선택하여 업로드를 완료해주세요.');
       return;
     }
@@ -161,6 +163,13 @@ export const ContractDashboard: React.FC = () => {
                         <td className="px-10 py-8 text-center font-bold text-gray-900 num-clean">₩{c.amount.toLocaleString()}</td>
                         <td className="px-10 py-8 text-right flex justify-end gap-3">
                             <button 
+                              onClick={() => setViewingContract(c)} 
+                              className="p-3 bg-gray-50 rounded-xl text-gray-300 hover:text-hannam-green hover:bg-gray-100 transition-all" 
+                              title="계약서 보기"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button 
                               onClick={() => handleResend(c)} 
                               disabled={resendingId === c.id}
                               className={`p-3 rounded-xl transition-all ${resendingId === c.id ? 'bg-gray-100 text-gray-300' : 'bg-[#E7F0FF] text-[#4A90E2] hover:bg-[#4A90E2] hover:text-white'}`}
@@ -206,6 +215,102 @@ export const ContractDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Contract Viewer Modal (Digital PDF Simulator) */}
+      {viewingContract && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[250] flex items-center justify-center p-8 overflow-y-auto">
+           <div className="bg-white w-full max-w-4xl min-h-[90vh] rounded-3xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 relative">
+              <div className="absolute top-6 right-6 z-50 flex gap-4">
+                 <button onClick={() => window.print()} className="p-3 bg-gray-50 rounded-full text-gray-400 hover:text-black transition-colors shadow-sm">
+                    <Printer className="w-5 h-5" />
+                 </button>
+                 <button onClick={() => setViewingContract(null)} className="p-3 bg-gray-50 rounded-full text-gray-400 hover:text-red-500 transition-colors shadow-sm">
+                    <X className="w-5 h-5" />
+                 </button>
+              </div>
+
+              <div className="flex-1 p-16 md:p-24 overflow-y-auto print:p-0">
+                 <div className="max-w-3xl mx-auto border border-gray-100 p-16 shadow-inner relative bg-white">
+                    {/* Watermark */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none select-none">
+                       <h2 className="text-8xl font-serif font-bold -rotate-45">THE HANNAM</h2>
+                    </div>
+
+                    <header className="text-center mb-16 border-b border-gray-100 pb-12">
+                       <h2 className="text-3xl font-serif font-bold text-hannam-green tracking-widest uppercase mb-2">Service Membership Agreement</h2>
+                       <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.5em]">Wellness, The Hannam Official Document</p>
+                    </header>
+
+                    <section className="space-y-10 relative z-10">
+                       <div className="grid grid-cols-2 gap-12">
+                          <div className="space-y-4">
+                             <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest border-b border-gray-50 pb-2">Client Information</p>
+                             <div className="space-y-2">
+                                <p className="text-sm font-bold text-gray-900">{viewingContract.memberName}</p>
+                                <p className="text-xs font-medium text-gray-500 num-clean">{viewingContract.memberPhone}</p>
+                                <p className="text-xs font-medium text-gray-500">{viewingContract.memberEmail}</p>
+                             </div>
+                          </div>
+                          <div className="space-y-4 text-right">
+                             <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest border-b border-gray-50 pb-2 text-right">Agreement ID</p>
+                             <div className="space-y-2">
+                                <p className="text-xs font-bold text-gray-900 num-clean">{viewingContract.id.toUpperCase()}</p>
+                                <p className="text-[10px] font-black text-hannam-gold uppercase tracking-widest">{viewingContract.createdAt.split('T')[0]}</p>
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="bg-[#FBF9F6] p-10 rounded-2xl border border-gray-50">
+                          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Plan Summary</h4>
+                          <div className="flex justify-between items-end">
+                             <div>
+                                <h3 className="text-2xl font-serif font-bold text-gray-900">{viewingContract.typeName}</h3>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Official Plan Execution</p>
+                             </div>
+                             <div className="text-right">
+                                <p className="text-3xl font-black text-hannam-green num-clean">₩{viewingContract.amount.toLocaleString()}</p>
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="pt-10 space-y-4">
+                          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-2">General Provisions</h4>
+                          <p className="text-[11px] leading-relaxed text-gray-400 font-medium italic">
+                             본 계약은 더 한남 웰니스 센터와 체결한 공식 서비스 멤버십 계약입니다. 
+                             모든 서비스는 당사 운영 규정 및 약관에 따라 제공되며, 본 전자 서명을 통해 상호 합의가 완료되었습니다.
+                             계약 체결 시점의 예치금은 멤버십 잔액으로 즉시 전환됩니다.
+                          </p>
+                       </div>
+
+                       <div className="pt-20 flex justify-between items-end">
+                          <div className="flex items-center gap-3">
+                             <ShieldCheck className="w-8 h-8 text-hannam-gold opacity-30" />
+                             <div>
+                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Verified By</p>
+                                <p className="text-xs font-bold text-gray-900">Wellness The Hannam Staff</p>
+                             </div>
+                          </div>
+                          <div className="text-right flex flex-col items-end gap-3">
+                             <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Client Signature</p>
+                             <div className="w-48 h-20 bg-gray-50/50 rounded-xl border border-gray-50 overflow-hidden flex items-center justify-center p-2">
+                                {viewingContract.signature ? (
+                                   <img src={viewingContract.signature} alt="Client Signature" className="max-h-full object-contain mix-blend-multiply opacity-80" />
+                                ) : (
+                                   <span className="text-[10px] text-gray-300 italic">No Digital Signature</span>
+                                )}
+                             </div>
+                          </div>
+                       </div>
+                    </section>
+
+                    <footer className="mt-24 pt-8 border-t border-gray-100 text-center">
+                       <p className="text-[9px] font-serif font-bold text-gray-300 uppercase tracking-[0.5em]">Wellness Heritage, The Hannam — Private Registry Office</p>
+                    </footer>
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
 
       {/* Template Upload/Edit Modal */}
       {isTemplateModalOpen && (

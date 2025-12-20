@@ -23,18 +23,18 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
         ctx.lineJoin = 'round';
       }
       
-      // 컨테이너 크기에 맞춰 내부 해상도 조정
       const resize = () => {
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width;
-        canvas.height = rect.height;
-        // 리사이즈 후 컨텍스트 설정 재적용 필요
-        const newCtx = canvas.getContext('2d');
-        if (newCtx) {
-          newCtx.strokeStyle = '#1A362E';
-          newCtx.lineWidth = 3;
-          newCtx.lineCap = 'round';
-          newCtx.lineJoin = 'round';
+        const parent = canvas.parentElement;
+        if (parent) {
+          canvas.width = parent.clientWidth;
+          canvas.height = parent.clientHeight;
+          const newCtx = canvas.getContext('2d');
+          if (newCtx) {
+            newCtx.strokeStyle = '#1A362E';
+            newCtx.lineWidth = 3;
+            newCtx.lineCap = 'round';
+            newCtx.lineJoin = 'round';
+          }
         }
       };
       
@@ -48,12 +48,9 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    };
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
@@ -69,6 +66,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing) return;
+    if (e.cancelable) e.preventDefault();
     const pos = getPos(e);
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx) {
@@ -82,7 +80,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
     setIsDrawing(false);
     const canvas = canvasRef.current;
     if (canvas) {
-      // 그릴 때마다 즉시 상태를 부모에게 전달하여 버튼 활성화 상태 업데이트
+      // 펜을 떼는 즉시 부모 컴포넌트의 state로 전달 (버튼 활성화)
       onSave(canvas.toDataURL());
     }
   };
