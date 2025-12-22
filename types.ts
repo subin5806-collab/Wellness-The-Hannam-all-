@@ -99,6 +99,7 @@ export interface ContractTemplate {
   title: string;
   type: 'MEMBERSHIP' | 'WAIVER' | 'PT_AGREEMENT';
   pdfName: string;
+  fileData?: string; // 실제 PDF/이미지 파일 바이너리(Base64)
   contentBody: string;
   createdAt: string;
 }
@@ -117,6 +118,7 @@ export interface Contract {
   status: 'COMPLETED' | 'PENDING';
   signature?: string;
   pdfName?: string;
+  pdfUrl?: string; 
   yearMonth: string;
   createdAt: string;
 }
@@ -136,14 +138,14 @@ export interface Inquiry {
   memberName: string;
   phone: string;
   path: InquiryPath;
-  content: string; // 최초 문의 내용
-  logs: InquiryLog[]; // 누적 상담 기록
+  content: string; 
+  logs: InquiryLog[]; 
   status: InquiryStatus;
-  needsFollowUp: boolean; // 재컨택 필요 여부
+  needsFollowUp: boolean; 
   receivedBy: string; 
   assignedStaff: string; 
-  createdAt: string; // YYYY-MM-DD HH:mm:ss
-  yearMonth: string; // YYYY-MM (다운로드용)
+  createdAt: string; 
+  yearMonth: string; 
   updatedAt: string;
 }
 

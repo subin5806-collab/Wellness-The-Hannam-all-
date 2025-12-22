@@ -14,34 +14,37 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) return;
+
+    // 고해상도 대응 (Device Pixel Ratio)
+    const dpr = window.devicePixelRatio || 1;
+    const setupCanvas = () => {
+      const parent = canvas.parentElement;
+      if (parent) {
+        const rect = parent.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${rect.height}px`;
+        
+        ctx.scale(dpr, dpr);
         ctx.strokeStyle = '#1A362E';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2.5;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
+        
+        // 배경색을 흰색으로 초기화 (Base64 저장 시 검은 배경 방지)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, rect.width, rect.height);
       }
-      
-      const resize = () => {
-        const parent = canvas.parentElement;
-        if (parent) {
-          canvas.width = parent.clientWidth;
-          canvas.height = parent.clientHeight;
-          const newCtx = canvas.getContext('2d');
-          if (newCtx) {
-            newCtx.strokeStyle = '#1A362E';
-            newCtx.lineWidth = 3;
-            newCtx.lineCap = 'round';
-            newCtx.lineJoin = 'round';
-          }
-        }
-      };
-      
-      resize();
-      window.addEventListener('resize', resize);
-      return () => window.removeEventListener('resize', resize);
-    }
+    };
+
+    setupCanvas();
+    window.addEventListener('resize', setupCanvas);
+    return () => window.removeEventListener('resize', setupCanvas);
   }, []);
 
   const getPos = (e: React.MouseEvent | React.TouchEvent) => {
@@ -50,7 +53,10 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
     const rect = canvas.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
   };
 
   const startDrawing = (e: React.MouseEvent | React.TouchEvent) => {
@@ -66,7 +72,10 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
 
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing) return;
+    
+    // 터치 시 스크롤 방지
     if (e.cancelable) e.preventDefault();
+    
     const pos = getPos(e);
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx) {
@@ -80,26 +89,30 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onSave, onClear }) =
     setIsDrawing(false);
     const canvas = canvasRef.current;
     if (canvas) {
-      // 펜을 떼는 즉시 부모 컴포넌트의 state로 전달 (버튼 활성화)
-      onSave(canvas.toDataURL());
+      onSave(canvas.toDataURL('image/png'));
     }
   };
 
   const handleClear = () => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    if (canvas && ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, w, h);
       setHasDrawn(false);
       onClear();
     }
   };
 
   return (
-    <div className="relative w-full h-full bg-white rounded-xl border-2 border-gray-100 overflow-hidden group shadow-inner">
+    <div className="relative w-full h-full bg-white rounded-xl border-2 border-gray-100 overflow-hidden group shadow-inner touch-none">
       <canvas
         ref={canvasRef}
-        className="w-full h-full cursor-crosshair touch-none"
+        className="w-full h-full cursor-crosshair block"
         onMouseDown={startDrawing}
         onMouseMove={draw}
         onMouseUp={stopDrawing}

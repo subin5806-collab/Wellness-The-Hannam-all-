@@ -59,11 +59,45 @@ seedInitialData();
 
 export const generateHannamFilename = (name: string, id: string, dateStr: string): string => {
   const d = new Date(dateStr);
-  const year = String(d.getFullYear()).slice(-2);
+  const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   const cleanId = id.replace(/[^0-9]/g, '');
-  return `${year}년도 ${month}월 ${day}일 ${name}, ${cleanId}.pdf`;
+  return `${year}-${month}-${day} ${name}, ${cleanId}.pdf`;
+};
+
+export const simulatePDFGeneration = (contract: any): string => {
+  const content = `
+[THE HANNAM OFFICIAL DIGITAL CONTRACT]
+--------------------------------------------------
+DOCUMENT ID: ${contract.id.toUpperCase()}
+DATE OF ISSUE: ${new Date(contract.createdAt).toLocaleString()}
+--------------------------------------------------
+
+1. CLIENT INFORMATION
+- Name: ${contract.memberName}
+- Contact: ${contract.memberPhone}
+- Email: ${contract.memberEmail}
+- ID Ref: ${contract.memberId}
+
+2. AGREEMENT DETAILS
+- Contract Type: ${contract.typeName}
+- Total Amount: KRW ${contract.amount.toLocaleString()}
+- Status: COMPLETED & LEGALLY BINDING
+
+3. TERMS & CONDITIONS (SUMMARY)
+- This contract grants access to exclusive services at Wellness The Hannam.
+- All credits are non-transferable and valid for the specified period.
+- Digital signature below confirms agreement to all internal policies.
+
+4. DIGITAL AUTHORIZATION
+- Signed at: ${new Date(contract.createdAt).toISOString()}
+- Authorization Hash: HANNAM-AUTH-${contract.id.slice(-6)}
+
+--------------------------------------------------
+THE HANNAM WELLNESS REGISTRY CENTER
+  `;
+  return `data:text/plain;base64,${btoa(unescape(encodeURIComponent(content)))}`;
 };
 
 export const validateEmail = (email: string) => {
@@ -275,14 +309,32 @@ export const dbService = {
     return getCollection<Contract>(COLLECTIONS.CONTRACTS).filter(c => c.memberId === memberId);
   },
   getTemplates: async () => { await delay(); return getCollection<ContractTemplate>(COLLECTIONS.TEMPLATES); },
+  
   uploadTemplate: async (title: string, file: File) => {
     await delay();
     const list = getCollection<ContractTemplate>(COLLECTIONS.TEMPLATES);
-    const newItem: ContractTemplate = { id: `tmpl_${Date.now()}`, title, type: 'MEMBERSHIP', pdfName: file.name, contentBody: 'PDF Template', createdAt: new Date().toISOString() };
+    
+    // 파일을 Data URL로 변환하여 저장
+    const fileData = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
+
+    const newItem: ContractTemplate = { 
+      id: `tmpl_${Date.now()}`, 
+      title, 
+      type: 'MEMBERSHIP', 
+      pdfName: file.name, 
+      fileData, 
+      contentBody: 'Digital Form', 
+      createdAt: new Date().toISOString() 
+    };
     list.push(newItem);
     saveCollection(COLLECTIONS.TEMPLATES, list);
     return newItem;
   },
+  
   saveTemplate: async (data: Omit<ContractTemplate, 'id' | 'createdAt'>) => {
     await delay();
     const list = getCollection<ContractTemplate>(COLLECTIONS.TEMPLATES);
@@ -331,6 +383,7 @@ export const dbService = {
 
     const newContract: Contract = { 
       id: `cont_${Date.now()}`, 
+      templateId: data.templateId,
       memberId: member.id, 
       memberName: member.name, 
       memberEmail: member.email, 
@@ -340,11 +393,14 @@ export const dbService = {
       typeName: data.typeName, 
       amount: data.amount, 
       status: 'COMPLETED', 
-      signature: data.signature, // 서명 데이터 저장
+      signature: data.signature,
       yearMonth: new Date().toISOString().slice(0, 7), 
       createdAt: new Date().toISOString() 
     };
     
+    newContract.pdfUrl = simulatePDFGeneration(newContract);
+    newContract.pdfName = generateHannamFilename(member.name, member.id, newContract.createdAt);
+
     contracts.push(newContract);
     saveCollection(COLLECTIONS.CONTRACTS, contracts);
     return { contract: newContract, member };

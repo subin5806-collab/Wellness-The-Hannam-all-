@@ -2,20 +2,22 @@
 import React, { useEffect, useState } from 'react';
 import { dbService } from '../../services/dbService';
 import { authService } from '../../services/authService';
-import { Member, CareRecord, Reservation, CareStatus } from '../../types';
+import { Member, CareRecord, Reservation, CareStatus, Contract } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import { LayoutGrid, RefreshCw, Clock, ChevronRight, UserCheck, MessageSquare, Sparkles } from 'lucide-react';
+import { LayoutGrid, RefreshCw, Clock, ChevronRight, UserCheck, MessageSquare, Sparkles, FileText, Download, X } from 'lucide-react';
 import { SignaturePad } from '../../components/SignaturePad';
 
 export const MemberPortal: React.FC = () => {
   const [member, setMember] = useState<Member | null>(null);
   const [history, setHistory] = useState<CareRecord[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [pendingRecord, setPendingRecord] = useState<CareRecord | null>(null);
   const [activeTab, setActiveTab] = useState<'home' | 'history' | 'notes'>('home');
   
   const [signature, setSignature] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [viewingContractUrl, setViewingContractUrl] = useState<string | null>(null);
   
   const navigate = useNavigate();
   const currentUser = authService.getCurrentUser();
@@ -27,15 +29,17 @@ export const MemberPortal: React.FC = () => {
 
   const loadMemberData = async () => {
     if (!currentUser) return;
-    const [m, h, r] = await Promise.all([
+    const [m, h, r, c] = await Promise.all([
       dbService.getMemberById(currentUser.id),
       dbService.getMemberCareHistory(currentUser.id),
-      dbService.getReservations(currentUser.id)
+      dbService.getReservations(currentUser.id),
+      dbService.getMemberContracts(currentUser.id)
     ]);
     if (m) {
       setMember(m);
       setHistory(h);
       setReservations(r);
+      setContracts(c);
       const pending = h.find(rec => rec.status === CareStatus.WAITING_SIGNATURE);
       setPendingRecord(pending || null);
     }
@@ -151,16 +155,42 @@ export const MemberPortal: React.FC = () => {
         )}
 
         {activeTab === 'notes' && (
-          <div className="space-y-6 animate-fade-in">
-             <h3 className="text-lg font-serif font-bold text-hannam-green border-b border-gray-100 pb-3 uppercase tracking-wider">Expert Insights</h3>
-             <div className="space-y-5">
-                <div className="bg-white rounded-2xl border border-gray-100 p-8 space-y-6 shadow-xl border-t-4 border-t-hannam-gold">
+          <div className="space-y-8 animate-fade-in">
+             <div>
+                <h3 className="text-lg font-serif font-bold text-hannam-green border-b border-gray-100 pb-3 uppercase tracking-wider mb-6">Expert Insights</h3>
+                <div className="bg-white rounded-2xl border border-gray-100 p-8 space-y-6 shadow-xl border-t-4 border-t-hannam-gold mb-10">
                    <div className="flex items-center gap-3">
                       <Sparkles className="w-5 h-5 text-hannam-gold" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Personal Recommendation</span>
                    </div>
                    <p className="text-xs font-bold text-gray-900 leading-relaxed italic border-l-2 border-hannam-gold/20 pl-4">{member.aiRecommended}</p>
                    <p className="text-right text-[8px] font-black text-gray-300 uppercase tracking-widest">- HANNAM SPECIALIST CURATION</p>
+                </div>
+             </div>
+
+             <div>
+                <h3 className="text-lg font-serif font-bold text-hannam-green border-b border-gray-100 pb-3 uppercase tracking-wider mb-6">Digital Documents</h3>
+                <div className="space-y-4">
+                   {contracts.map(contract => (
+                      <div key={contract.id} className="bg-white p-6 rounded-2xl border border-gray-100 flex justify-between items-center shadow-sm group hover:border-hannam-gold transition-colors">
+                         <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-300 group-hover:bg-hannam-green group-hover:text-white transition-all">
+                               <FileText className="w-5 h-5" />
+                            </div>
+                            <div>
+                               <p className="text-xs font-bold text-gray-900">{contract.typeName}</p>
+                               <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">{contract.createdAt.split('T')[0]}</p>
+                            </div>
+                         </div>
+                         <button 
+                            onClick={() => contract.pdfUrl && setViewingContractUrl(contract.pdfUrl)}
+                            className="p-3 bg-[#FBF9F6] rounded-xl text-hannam-gold hover:bg-hannam-gold hover:text-white transition-all"
+                         >
+                            <Download className="w-4 h-4" />
+                         </button>
+                      </div>
+                   ))}
+                   {contracts.length === 0 && <p className="text-center py-10 text-gray-300 font-bold uppercase italic text-[10px]">No signed documents yet</p>}
                 </div>
              </div>
           </div>
@@ -178,6 +208,20 @@ export const MemberPortal: React.FC = () => {
            </button>
          ))}
       </nav>
+
+      {/* Contract PDF Preview Modal */}
+      {viewingContractUrl && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
+           <div className="bg-white w-full max-w-lg rounded-[40px] p-12 shadow-2xl flex flex-col relative animate-fade-in">
+              <button onClick={() => setViewingContractUrl(null)} className="absolute top-6 right-6 p-2 text-gray-300 hover:text-black">
+                 <X className="w-6 h-6" />
+              </button>
+              <h2 className="text-2xl font-serif font-bold text-hannam-green mb-8 uppercase tracking-widest text-center border-b border-gray-50 pb-6">Digital Certificate</h2>
+              <iframe src={viewingContractUrl} className="w-full h-[400px] border-0 rounded-2xl bg-gray-50 p-8 font-mono text-[11px] leading-relaxed shadow-inner" />
+              <button onClick={() => setViewingContractUrl(null)} className="w-full py-5 bg-hannam-green text-white rounded-2xl font-black text-[11px] uppercase tracking-widest mt-8">Close Viewer</button>
+           </div>
+        </div>
+      )}
     </div>
   );
 };
