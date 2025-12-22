@@ -1,13 +1,13 @@
 
 import { User, UserRole, PermissionScope, ROLE_SCOPES, Member } from '../types';
 
+// 메모리에만 사용자 정보를 유지 (새로고침 시 초기화됨)
 let currentUser: User | null = null;
 
 export const authService = {
   adminLogin: async (email: string, password: string): Promise<User> => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     
-    // 지정된 관리자 계정 정보 확인 (보안 강화)
     if (email === 'help@thehannam.com' && password === 'lucete800134') {
       const mockUser: User = {
         id: 'admin-hannam',
@@ -16,7 +16,7 @@ export const authService = {
         role: UserRole.SUPER_ADMIN,
       };
       currentUser = mockUser;
-      localStorage.setItem('currentUser', JSON.stringify(mockUser));
+      // localStorage.setItem 제거: 보안을 위해 브라우저에 저장하지 않음
       return mockUser;
     } else {
       throw new Error('관리자 이메일 또는 비밀번호가 일치하지 않습니다.');
@@ -26,7 +26,6 @@ export const authService = {
   memberLogin: async (memberId: string, password: string): Promise<User> => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     
-    // 핸드폰 번호에서 숫지만 추출하여 ID 비교
     const cleanId = memberId.replace(/[^0-9]/g, '');
     const membersRaw = localStorage.getItem('firestore_members');
     const members: Member[] = membersRaw ? JSON.parse(membersRaw) : [];
@@ -45,22 +44,17 @@ export const authService = {
     };
     
     currentUser = user;
-    localStorage.setItem('currentUser', JSON.stringify(user));
+    // localStorage.setItem 제거: 보안을 위해 브라우저에 저장하지 않음
     return user;
   },
 
   logout: () => {
     currentUser = null;
+    // localStorage.removeItem은 더 이상 필요 없으나 안전을 위해 기존 데이터가 있다면 삭제
     localStorage.removeItem('currentUser');
   },
 
   getCurrentUser: (): User | null => {
-    if (!currentUser) {
-      const stored = localStorage.getItem('currentUser');
-      if (stored) {
-        currentUser = JSON.parse(stored);
-      }
-    }
     return currentUser;
   },
 

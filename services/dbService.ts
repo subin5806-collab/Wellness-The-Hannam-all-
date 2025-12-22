@@ -1,6 +1,17 @@
 
 import { Member, CareRecord, Reservation, CareStatus, MemberTier, UserRole, Contract, Inquiry, ContractTemplate, Therapist, InquiryStatus, InquiryPath, InquiryLog } from '../types';
 import { geminiService } from './geminiService';
+import emailjs from '@emailjs/browser';
+
+/**
+ * EMAILJS 설정 정보
+ * 아래 정보는 EmailJS 대시보드(https://dashboard.emailjs.com/)에서 확인 가능합니다.
+ */
+const EMAILJS_CONFIG = {
+  PUBLIC_KEY: 'YOUR_PUBLIC_KEY', // EmailJS Public Key를 입력하세요
+  SERVICE_ID: 'YOUR_SERVICE_ID', // EmailJS Service ID를 입력하세요
+  TEMPLATE_ID: 'YOUR_TEMPLATE_ID', // EmailJS Template ID를 입력하세요
+};
 
 const COLLECTIONS = {
   MEMBERS: 'firestore_members',
@@ -64,6 +75,39 @@ export const generateHannamFilename = (name: string, id: string, dateStr: string
   const day = String(d.getDate()).padStart(2, '0');
   const cleanId = id.replace(/[^0-9]/g, '');
   return `${year}-${month}-${day} ${name}, ${cleanId}.pdf`;
+};
+
+/**
+ * [REAL] EmailJS를 통한 이메일 발송 함수
+ * 발신자: help@thehannam.com 고정
+ */
+const sendHannamEmail = async (to: string, subject: string, body: string) => {
+  // Public Key가 설정되지 않은 경우 콘솔로만 출력 (초기 설정 유도)
+  if (EMAILJS_CONFIG.PUBLIC_KEY === 'YOUR_PUBLIC_KEY') {
+    console.warn('[EMAILJS NOT CONFIGURED] 실제 발송을 위해 dbService.ts에서 PUBLIC_KEY를 설정하세요.');
+    console.info(`[SIMULATED EMAIL] FROM: help@thehannam.com TO: ${to} SUBJECT: ${subject}`);
+    return;
+  }
+
+  try {
+    const templateParams = {
+      to_email: to,
+      from_name: '더 한남 (The Hannam)',
+      reply_to: 'help@thehannam.com',
+      subject: subject,
+      message: body,
+    };
+
+    await emailjs.send(
+      EMAILJS_CONFIG.SERVICE_ID,
+      EMAILJS_CONFIG.TEMPLATE_ID,
+      templateParams,
+      EMAILJS_CONFIG.PUBLIC_KEY
+    );
+    console.info(`[EMAIL SUCCESS] ${to}님께 이메일 발송 완료`);
+  } catch (error) {
+    console.error('[EMAIL ERROR] 이메일 발송 실패:', error);
+  }
 };
 
 export const simulatePDFGeneration = (contract: any): string => {
@@ -208,6 +252,14 @@ export const dbService = {
     };
     members.push(newMember);
     saveCollection(COLLECTIONS.MEMBERS, members);
+
+    // [NOTIFICATION] 회원가입 환영 이메일
+    sendHannamEmail(
+      newMember.email,
+      `[더 한남] ${newMember.name}님, 멤버십 가입을 환영합니다.`,
+      `안녕하세요 ${newMember.name}님, 더 한남 웰니스 센터의 회원이 되신 것을 축하드립니다.\n로그인 아이디: ${newMember.id}\n초기 충전 금액: ₩${newMember.deposit.toLocaleString()}`
+    );
+
     return newMember;
   },
 
@@ -401,6 +453,13 @@ export const dbService = {
     newContract.pdfUrl = simulatePDFGeneration(newContract);
     newContract.pdfName = generateHannamFilename(member.name, member.id, newContract.createdAt);
 
+    // [NOTIFICATION] 계약 완료 이메일 발송
+    sendHannamEmail(
+      newContract.memberEmail, 
+      `[더 한남] ${newContract.typeName} 계약 체결 안내`, 
+      `안녕하세요 ${newContract.memberName}님, 요청하신 계약이 성공적으로 체결되었습니다.\n결제 금액: ₩${newContract.amount.toLocaleString()}\n체결 일시: ${new Date(newContract.createdAt).toLocaleString()}\n\n디지털 보관함에서 상세 내용을 확인하실 수 있습니다.`
+    );
+
     contracts.push(newContract);
     saveCollection(COLLECTIONS.CONTRACTS, contracts);
     return { contract: newContract, member };
@@ -443,6 +502,13 @@ export const dbService = {
         history[idx].signature = signature;
         history[idx].signedAt = new Date().toISOString();
         saveCollection(COLLECTIONS.CARE_HISTORY, history);
+
+        // [NOTIFICATION] 차감 완료 이메일 발송
+        sendHannamEmail(
+          member.email,
+          `[더 한남] 서비스 이용 및 영수증 안내`,
+          `안녕하세요 ${member.name}님, 더 한남 웰니스 이용 내역입니다.\n프로그램: ${record.content}\n차감 금액: ₩${record.discountedPrice.toLocaleString()}\n최종 잔액: ₩${member.remaining.toLocaleString()}\n이용 일시: ${new Date(record.signedAt || '').toLocaleString()}`
+        );
       }
     }
   },
@@ -451,7 +517,21 @@ export const dbService = {
   
   resendEmail: async (type: 'care' | 'contract' | 'membership', id: string) => {
     await delay(500);
-    console.log(`Resending ${type} email for ID: ${id}`);
+    const members = getCollection<Member>(COLLECTIONS.MEMBERS);
+    if (type === 'care') {
+      const records = getCollection<CareRecord>(COLLECTIONS.CARE_HISTORY);
+      const rec = records.find(r => r.id === id);
+      const m = members.find(mem => mem.id === rec?.memberId);
+      if (m && rec) {
+        sendHannamEmail(m.email, `[재발송] ${rec.content} 영수증`, `${m.name}님, 요청하신 이용 내역을 재발송 드립니다.`);
+      }
+    } else if (type === 'contract') {
+      const contracts = getCollection<Contract>(COLLECTIONS.CONTRACTS);
+      const c = contracts.find(con => con.id === id);
+      if (c) {
+        sendHannamEmail(c.memberEmail, `[재발송] ${c.typeName} 계약서`, `${c.memberName}님, 요청하신 계약서 사본을 재발송 드립니다.`);
+      }
+    }
     return true;
   },
 };

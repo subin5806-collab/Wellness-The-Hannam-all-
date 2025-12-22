@@ -33,15 +33,15 @@ export const MemberRegistration: React.FC = () => {
       return alert('모든 필수 항목(이름, 이메일, 연락처, 비밀번호)을 입력하세요.');
     }
     if (!validateEmail(formData.email)) {
-      return alert('유효한 이메일 형식이 아닙니다.');
+      return alert('유효하지 않은 이메일 형식입니다. 다시 확인해 주세요.');
     }
     if (formData.password.length < 4) {
-      return alert('비밀번호는 최소 4자 이상이어야 합니다.');
+      return alert('보안을 위해 비밀번호는 최소 4자 이상으로 설정해 주세요.');
     }
 
     try {
       const newMember = await dbService.registerMember(formData);
-      alert(`회원 등록이 완료되었습니다.\n회원번호: ${newMember.id}`);
+      alert(`회원 등록이 완료되었습니다.\n전송된 안내 이메일을 확인해 주세요.\n회원번호: ${newMember.id}`);
       navigate('/admin/members');
     } catch (e: any) {
       alert(e.message);

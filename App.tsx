@@ -38,8 +38,9 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; roles?: UserRole[]; 
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-[0.3em] text-xs animate-pulse">WELLNESS ARCHIVE...</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-[0.3em] text-xs animate-pulse">AUTHENTICATING SECURE ARCHIVE...</div>;
 
+  // 세션이 없으면 무조건 로그인 페이지로 이동
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
@@ -54,7 +55,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; roles?: UserRole[]; 
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-[0.3em] text-xs animate-pulse">WELLNESS ARCHIVE...</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-[0.3em] text-xs animate-pulse">INITIALIZING SYSTEM...</div>;
   if (user) {
     const defaultPath = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF].includes(user.role) ? '/admin' : '/member';
     return <Navigate to={defaultPath} replace />;
@@ -107,7 +108,7 @@ const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <p className="text-[11px] font-bold text-hannam-text leading-none">{user.name}</p>
             <p className="text-[8px] font-bold text-hannam-gold uppercase tracking-widest mt-1">{user.role}</p>
           </div>
-          <button onClick={() => { if(confirm('로그아웃 하시겠습니까?')) logout(); }} className="text-gray-400 hover:text-red-500 transition-colors p-2">
+          <button onClick={() => { if(confirm('보안을 위해 로그아웃 하시겠습니까?')) logout(); }} className="text-gray-400 hover:text-red-500 transition-colors p-2">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -211,8 +212,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   const navigate = useNavigate();
 
   useEffect(() => {
-    const storedUser = authService.getCurrentUser();
-    if (storedUser) setUser(storedUser);
+    // 자동 로그인(localStorage 로드)을 완전히 제거하여 무조건 로그인을 강제함
     setIsLoading(false);
   }, []);
 
