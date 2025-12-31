@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { HashRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminReservations } from './pages/admin/AdminReservations';
@@ -14,48 +14,36 @@ import { ContractDashboard } from './pages/admin/ContractDashboard';
 import { ContractCreator } from './pages/admin/ContractCreator';
 import { MemberPortal } from './pages/member/MemberPortal';
 import { ContractViewer } from './pages/contract/ContractViewer';
-import { authService } from './services/authService';
+import { AuthProvider, useAuth } from './AuthContext';
+import { LanguageProvider } from './LanguageContext';
 import { dbService } from './services/dbService';
-import { UserRole, User } from './types';
-import { LogOut, LayoutGrid, Users, Calendar, FileText, Lock, MessageSquare, ChevronRight } from 'lucide-react';
-
-interface AuthContextType {
-  user: User | null;
-  isLoading: boolean;
-  login: (type: 'admin' | 'member', id: string, pw: string) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | null>(null);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within AuthProvider");
-  return context;
-};
+import { UserRole } from './types';
+import { LogOut, LayoutGrid, Users, Calendar, FileText, Lock, MessageSquare, ShieldAlert, Clock } from 'lucide-react';
+import { ADMIN_UI } from './constants/adminLocale';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; roles?: UserRole[]; theme?: string }> = ({ children, roles, theme }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
-
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-[0.3em] text-xs animate-pulse">AUTHENTICATING SECURE ARCHIVE...</div>;
-
-  // 세션이 없으면 무조건 로그인 페이지로 이동
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
+  
+  if (isLoading) return (
+    <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-[0.3em] text-xs">
+      AUTHENTICATING...
+    </div>
+  );
+  
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
+  
   if (roles && !roles.includes(user.role)) {
     const defaultPath = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF].includes(user.role) ? '/admin' : '/member';
     return <Navigate to={defaultPath} replace />;
   }
-
-  return <div className={`min-h-screen transition-all duration-700 ${theme || 'bg-hannam-bg'}`}>{children}</div>;
+  
+  return <div className={`min-h-screen ${theme || 'bg-hannam-bg'}`}>{children}</div>;
 };
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-[0.3em] text-xs animate-pulse">INITIALIZING SYSTEM...</div>;
+  if (isLoading) return null;
   if (user) {
     const defaultPath = [UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF].includes(user.role) ? '/admin' : '/member';
     return <Navigate to={defaultPath} replace />;
@@ -64,51 +52,84 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const AdminLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, sessionTimeLeft, resetSession } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-
+  
   if (!user) return null;
 
   const navItems = [
-    { label: 'Dashboard', path: '/admin', icon: LayoutGrid },
-    { label: 'Reservations', path: '/admin/reservations', icon: Calendar },
-    { label: 'Members', path: '/admin/members', icon: Users },
-    { label: 'Contracts', path: '/admin/contracts', icon: FileText },
-    { label: 'Inquiries', path: '/admin/inquiries', icon: MessageSquare },
+    { label: ADMIN_UI.navigation.dashboard, path: '/admin', icon: LayoutGrid },
+    { label: ADMIN_UI.navigation.reservations, path: '/admin/reservations', icon: Calendar },
+    { label: ADMIN_UI.navigation.members, path: '/admin/members', icon: Users },
+    { label: ADMIN_UI.navigation.contracts, path: '/admin/contracts', icon: FileText },
+    { label: ADMIN_UI.navigation.inquiries, path: '/admin/inquiries', icon: MessageSquare },
   ];
 
-  const activePath = navItems.find(item => location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path)))?.path || '/admin';
+  const activePath = navItems.find(item => 
+    location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path))
+  )?.path || '/admin';
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
-    <div className="flex flex-col h-screen bg-transparent">
-      <header className="bg-white/80 backdrop-blur-md px-10 py-4 flex justify-between items-center border-b border-hannam-border z-[100] shadow-sm sticky top-0">
+    <div className="flex flex-col h-screen bg-hannam-bg">
+      {/* Session Warning Overlay */}
+      {sessionTimeLeft <= 60 && (
+        <div className="fixed inset-0 bg-hannam-text/60 backdrop-blur-md z-[999] flex items-center justify-center p-6">
+          <div className="bg-white rounded-[40px] p-12 max-w-md w-full text-center shadow-hannam-deep animate-smooth-fade">
+            <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-8">
+              <ShieldAlert className="w-10 h-10 text-amber-500" />
+            </div>
+            <h2 className="text-xl font-serif font-bold text-hannam-green mb-2 uppercase">세션 만료 예정</h2>
+            <p className="text-sm text-hannam-muted mb-8 leading-relaxed">
+              보안을 위해 60초 후 세션이 종료됩니다.<br/>계속 작업을 진행하시겠습니까?
+            </p>
+            <div className="flex gap-4">
+              <button onClick={() => logout()} className="flex-1 py-4 bg-hannam-bg text-hannam-muted rounded-2xl text-[10px] font-bold uppercase tracking-widest">로그아웃</button>
+              <button onClick={() => resetSession()} className="flex-1 py-4 btn-hannam-primary text-[10px] font-bold uppercase tracking-widest shadow-lg">세션 연장 ({sessionTimeLeft}초)</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <header className="bg-white/80 backdrop-blur-xl px-10 py-5 flex justify-between items-center border-b border-hannam-border z-[100] sticky top-0">
         <div className="flex items-center gap-16">
           <div className="flex flex-col">
-            <h1 className="text-xs font-serif font-bold tracking-[0.3em] text-hannam-green uppercase">WELLNESS, THE HANNAM</h1>
-            <span className="text-[9px] font-bold text-hannam-gold uppercase tracking-[0.2em] mt-0.5">Admin Registry</span>
+            <h1 className="text-xs font-serif font-bold tracking-[0.2em] text-hannam-green uppercase">WELLNESS, THE HANNAM</h1>
           </div>
-          <nav className="flex gap-4">
+          <nav className="flex gap-1.5">
             {navItems.map(item => (
               <button 
                 key={item.path} 
-                onClick={() => navigate(item.path)}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                  activePath === item.path ? 'bg-hannam-green text-white shadow-lg' : 'text-gray-400 hover:text-black'
+                onClick={() => navigate(item.path)} 
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl text-[10px] font-bold uppercase tracking-widest transition-all ${
+                  activePath === item.path ? 'bg-hannam-green text-white shadow-hannam-soft' : 'text-hannam-muted hover:text-hannam-text'
                 }`}
               >
-                <item.icon className={`w-3.5 h-3.5 ${activePath === item.path ? 'text-hannam-gold' : 'opacity-40'}`} />
                 {item.label}
               </button>
             ))}
           </nav>
         </div>
         <div className="flex items-center gap-6">
-          <div className="text-right border-r border-hannam-border pr-6">
-            <p className="text-[11px] font-bold text-hannam-text leading-none">{user.name}</p>
-            <p className="text-[8px] font-bold text-hannam-gold uppercase tracking-widest mt-1">{user.role}</p>
+          <div className="flex items-center gap-3 border-r border-hannam-border pr-6">
+            <div className="flex flex-col text-right">
+              <p className="text-[11px] font-bold text-hannam-text leading-none">{user.name}</p>
+              <div className="flex items-center justify-end gap-1.5 mt-1.5">
+                <Clock className={`w-3 h-3 ${sessionTimeLeft < 300 ? 'text-red-500' : 'text-hannam-gold'}`} />
+                <span className={`text-[9px] font-bold num-data ${sessionTimeLeft < 300 ? 'text-red-500' : 'text-hannam-muted'}`}>{formatTime(sessionTimeLeft)}</span>
+              </div>
+            </div>
           </div>
-          <button onClick={() => { if(confirm('보안을 위해 로그아웃 하시겠습니까?')) logout(); }} className="text-gray-400 hover:text-red-500 transition-colors p-2">
+          <button 
+            onClick={() => { if(confirm('로그아웃 하시겠습니까?')) logout(); }} 
+            className="text-hannam-muted hover:text-red-500 transition-colors p-2"
+          >
             <LogOut className="w-4 h-4" />
           </button>
         </div>
@@ -126,79 +147,97 @@ const LoginScreen: React.FC = () => {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [signupData, setSignupData] = useState({ name: '', phone: '', email: '', gender: '여성', password: '' });
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const handleAdminSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try { await login('admin', adminEmail, adminPassword); } catch (err: any) { alert(err.message); }
+    setIsAuthenticating(true);
+    try { 
+      await login('admin', adminEmail, adminPassword); 
+    } catch (err: any) { 
+      alert(err.message); 
+      setIsAuthenticating(false);
+    }
   };
 
   const handleMemberSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try { await login('member', memberId, memberPassword); } catch (err: any) { alert(err.message); }
+    setIsAuthenticating(true);
+    try { 
+      await login('member', memberId, memberPassword); 
+    } catch (err: any) { 
+      alert(err.message); 
+      setIsAuthenticating(false);
+    }
   };
 
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsAuthenticating(true);
     try {
+      if (!signupData.name || !signupData.phone || !signupData.email || !signupData.password) {
+        throw new Error('모든 정보를 입력해 주세요.');
+      }
       await dbService.registerMember(signupData);
       alert('가입 완료! 등록하신 핸드폰 번호로 로그인하세요.');
       setMode('member');
-    } catch (e: any) { alert(e.message); }
+      setMemberId(signupData.phone);
+    } catch (e: any) { 
+      alert(e.message); 
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-6 font-sans bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-      <div className="w-full max-w-md bg-white p-12 rounded-[50px] shadow-2xl border border-gray-100 text-center relative overflow-hidden animate-fade-in">
-        <div className="absolute top-0 left-0 w-full h-2 bg-hannam-green" />
-        <div className="py-10">
+    <div className="min-h-screen bg-hannam-bg flex items-center justify-center p-6 animate-smooth-fade">
+      <div className="w-full max-w-md bg-white p-12 rounded-[40px] shadow-hannam-soft text-center relative border border-[#F1EFEA]">
+        <div className="py-12">
           <h1 className="text-2xl font-serif font-bold text-hannam-green mb-2 tracking-[0.2em] uppercase">THE HANNAM</h1>
-          <p className="text-[10px] font-black text-hannam-gold uppercase tracking-[0.4em] mb-4">Wellness Registry Console</p>
+          <p className="text-[10px] font-bold text-hannam-muted uppercase tracking-[0.4em]">통합 관리 시스템</p>
         </div>
         
         {mode === 'select' && (
           <div className="space-y-4">
-            <button onClick={() => setMode('member')} className="w-full py-6 bg-hannam-green text-white rounded-[24px] font-black text-[11px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:shadow-xl transition-all">
-              Private Access Portal <ChevronRight className="w-4 h-4 text-hannam-gold" />
+            <button onClick={() => setMode('member')} className="w-full py-6 bg-hannam-green text-white rounded-[24px] font-bold text-[11px] uppercase tracking-[0.2em] shadow-lg hover:bg-black transition-all">
+              회원 포털 로그인
             </button>
-            <button onClick={() => setMode('signup')} className="w-full py-6 bg-white border border-gray-100 text-gray-400 rounded-[24px] font-black text-[11px] uppercase tracking-[0.2em] hover:bg-gray-50 transition-all">
-              Membership Registration
+            <button onClick={() => setMode('signup')} className="w-full py-6 bg-white border border-hannam-border text-hannam-muted rounded-[24px] font-bold text-[11px] uppercase tracking-[0.2em] hover:bg-hannam-bg transition-all">
+              신규 회원 등록
             </button>
-            <div className="pt-8 mt-8 border-t border-gray-50">
-               <button onClick={() => setMode('admin')} className="text-gray-300 text-[10px] font-black uppercase tracking-[0.3em] hover:text-hannam-green transition-colors flex items-center justify-center gap-2 mx-auto">
-                 <Lock className="w-3 h-3" /> System Administrator
+            <div className="pt-10">
+               <button onClick={() => setMode('admin')} className="text-hannam-muted text-[10px] font-bold uppercase tracking-[0.3em] hover:text-hannam-green transition-colors">
+                 관리자 로그인
                </button>
             </div>
           </div>
         )}
 
         {(mode === 'admin' || mode === 'member' || mode === 'signup') && (
-           <form onSubmit={mode === 'admin' ? handleAdminSubmit : (mode === 'member' ? handleMemberSubmit : handleSignupSubmit)} className="space-y-5 text-left animate-fade-in">
+           <form onSubmit={mode === 'admin' ? handleAdminSubmit : (mode === 'member' ? handleMemberSubmit : handleSignupSubmit)} className="space-y-5 text-left animate-smooth-fade">
               {mode === 'signup' && (
-                 <div className="grid grid-cols-2 gap-4">
-                    <input type="text" placeholder="성함" required value={signupData.name} onChange={e => setSignupData({...signupData, name: e.target.value})} className="w-full px-5 py-4 bg-gray-50 rounded-2xl font-bold text-xs outline-none" />
-                    <select value={signupData.gender} onChange={e => setSignupData({...signupData, gender: e.target.value as any})} className="w-full px-5 py-4 bg-gray-50 rounded-2xl font-bold text-xs outline-none"><option>여성</option><option>남성</option></select>
+                 <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                       <input type="text" placeholder="성함" required value={signupData.name} onChange={e => setSignupData({...signupData, name: e.target.value})} className="w-full px-5 py-4 bg-[#F9F8F6] rounded-2xl font-medium text-xs outline-none border border-transparent focus:border-hannam-gold transition-all" />
+                       <select value={signupData.gender} onChange={e => setSignupData({...signupData, gender: e.target.value as any})} className="w-full px-5 py-4 bg-[#F9F8F6] rounded-2xl font-medium text-xs outline-none"><option>여성</option><option>남성</option></select>
+                    </div>
+                    <input type="text" placeholder="연락처 (ID)" required value={signupData.phone} onChange={e => setSignupData({...signupData, phone: e.target.value})} className="w-full px-5 py-4 bg-[#F9F8F6] rounded-2xl font-medium text-xs outline-none border border-transparent focus:border-hannam-gold transition-all" />
+                    <input type="email" placeholder="이메일 주소" required value={signupData.email} onChange={e => setSignupData({...signupData, email: e.target.value})} className="w-full px-5 py-4 bg-[#F9F8F6] rounded-2xl font-medium text-xs outline-none border border-transparent focus:border-hannam-gold transition-all" />
                  </div>
               )}
-              <input 
-                type={mode === 'admin' ? 'email' : 'text'} 
-                placeholder={mode === 'admin' ? '이메일' : '연락처 (ID)'} 
-                required 
-                value={mode === 'admin' ? adminEmail : (mode === 'member' ? memberId : signupData.phone)} 
-                onChange={e => mode === 'admin' ? setAdminEmail(e.target.value) : (mode === 'member' ? setMemberId(e.target.value) : setSignupData({...signupData, phone: e.target.value}))} 
-                className="w-full px-5 py-4 bg-gray-50 rounded-2xl font-bold text-xs outline-none num-clean" 
-              />
-              <input 
-                type="password" 
-                placeholder="비밀번호" 
-                required 
-                value={mode === 'admin' ? adminPassword : (mode === 'member' ? memberPassword : signupData.password)} 
-                onChange={e => mode === 'admin' ? setAdminPassword(e.target.value) : (mode === 'member' ? setMemberPassword(e.target.value) : setSignupData({...signupData, password: e.target.value}))} 
-                className="w-full px-5 py-4 bg-gray-50 rounded-2xl font-bold text-xs outline-none" 
-              />
-              <button type="submit" className="w-full py-6 bg-hannam-green text-white rounded-[24px] font-black text-[11px] uppercase tracking-[0.2em] mt-4 shadow-xl">
-                 Authenticate & Enter
+              
+              {mode !== 'signup' && (mode === 'admin' ? (
+                <input type="email" placeholder="이메일" required value={adminEmail} onChange={e => setAdminEmail(e.target.value)} className="w-full px-5 py-4 bg-[#F9F8F6] rounded-2xl font-medium text-xs outline-none border border-transparent focus:border-hannam-gold transition-all" />
+              ) : (
+                <input type="text" placeholder="연락처 (ID)" required value={memberId} onChange={e => setMemberId(e.target.value)} className="w-full px-5 py-4 bg-[#F9F8F6] rounded-2xl font-medium text-xs outline-none border border-transparent focus:border-hannam-gold transition-all" />
+              ))}
+
+              <input type="password" placeholder="비밀번호" required value={mode === 'admin' ? adminPassword : (mode === 'member' ? memberPassword : signupData.password)} onChange={e => mode === 'admin' ? setAdminPassword(e.target.value) : (mode === 'member' ? setMemberPassword(e.target.value) : setSignupData({...signupData, password: e.target.value}))} className="w-full px-5 py-4 bg-[#F9F8F6] rounded-2xl font-medium text-xs outline-none border border-transparent focus:border-hannam-gold transition-all" />
+
+              <button type="submit" disabled={isAuthenticating} className="w-full py-6 bg-hannam-green text-white rounded-[24px] font-bold text-[11px] uppercase tracking-[0.2em] mt-4 shadow-lg hover:bg-black transition-all disabled:opacity-30">
+                 {isAuthenticating ? '인증 중...' : (mode === 'signup' ? '가입 완료' : '로그인')}
               </button>
-              <button type="button" onClick={() => setMode('select')} className="w-full text-[9px] font-black text-gray-300 uppercase tracking-widest text-center mt-4">Go Back</button>
+              <button type="button" onClick={() => setMode('select')} className="w-full text-[9px] font-bold text-hannam-muted uppercase tracking-widest text-center mt-4">뒤로가기</button>
            </form>
         )}
       </div>
@@ -206,114 +245,31 @@ const LoginScreen: React.FC = () => {
   );
 };
 
-const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // 자동 로그인(localStorage 로드)을 완전히 제거하여 무조건 로그인을 강제함
-    setIsLoading(false);
-  }, []);
-
-  const login = async (type: 'admin' | 'member', id: string, pw: string) => {
-    let loggedUser: User;
-    if (type === 'admin') loggedUser = await authService.adminLogin(id, pw);
-    else loggedUser = await authService.memberLogin(id, pw);
-    setUser(loggedUser);
-    const defaultPath = type === 'admin' ? '/admin' : '/member';
-    navigate(defaultPath, { replace: true });
-  };
-
-  const logout = () => {
-    authService.logout();
-    setUser(null);
-    navigate('/login', { replace: true });
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-};
-
 const App: React.FC = () => {
   return (
     <HashRouter>
       <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<PublicRoute><LoginScreen /></PublicRoute>} />
-          
-          <Route path="/admin" element={
-            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-[#F4F9F6]">
-              <AdminLayout><AdminDashboard /></AdminLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/reservations" element={
-            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-[#F4F7FB]">
-              <AdminLayout><AdminReservations /></AdminLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/members" element={
-            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-[#F9F9F9]">
-              <AdminLayout><AdminMembers /></AdminLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/contracts" element={
-            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-[#FBF9F6]">
-              <AdminLayout><ContractDashboard /></AdminLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/contract/new" element={
-            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-[#FBF9F6]">
-              <AdminLayout><ContractCreator /></AdminLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/inquiries" element={
-            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-[#FFFCF7]">
-              <AdminLayout><AdminInquiries /></AdminLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/member/:id" element={
-            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-[#F9F9F9]">
-              <AdminLayout><MemberDetail /></AdminLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/register" element={
-            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-[#F9F9F9]">
-              <AdminLayout><MemberRegistration /></AdminLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/care-session/:resId" element={
-            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-[#F4F9F6]">
-              <AdminLayout><AdminCareSession /></AdminLayout>
-            </ProtectedRoute>
-          } />
-          <Route path="/admin/care-result/:id" element={
-            <ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-[#F4F9F6]">
-              <AdminLayout><AdminCareResult /></AdminLayout>
-            </ProtectedRoute>
-          } />
-
-          <Route path="/member" element={
-            <ProtectedRoute roles={[UserRole.MEMBER]} theme="bg-[#FDFDFD]">
-              <MemberPortal />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/contract/:id" element={
-            <ProtectedRoute theme="bg-[#FDFDFD]">
-              <ContractViewer />
-            </ProtectedRoute>
-          } />
-
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+        <LanguageProvider>
+          <Routes>
+            <Route path="/login" element={<PublicRoute><LoginScreen /></PublicRoute>} />
+            <Route path="/admin" element={<ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]} theme="bg-hannam-bg"><AdminLayout><AdminDashboard /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/reservations" element={<ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]}><AdminLayout><AdminReservations /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/members" element={<ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]}><AdminLayout><AdminMembers /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/contracts" element={<ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]}><AdminLayout><ContractDashboard /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/contract/new" element={<ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]}><AdminLayout><ContractCreator /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/inquiries" element={<ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]}><AdminLayout><AdminInquiries /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/member/:id" element={<ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]}><AdminLayout><MemberDetail /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/register" element={<ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]}><AdminLayout><MemberRegistration /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/care-session/:resId" element={<ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]}><AdminLayout><AdminCareSession /></AdminLayout></ProtectedRoute>} />
+            <Route path="/admin/care-result/:id" element={<ProtectedRoute roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.STAFF]}><AdminLayout><AdminCareResult /></AdminLayout></ProtectedRoute>} />
+            <Route path="/member" element={<ProtectedRoute roles={[UserRole.MEMBER]}><MemberPortal /></ProtectedRoute>} />
+            <Route path="/contract/:id" element={<ProtectedRoute><ContractViewer /></ProtectedRoute>} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </LanguageProvider>
       </AuthProvider>
     </HashRouter>
   );
 };
-
 export default App;

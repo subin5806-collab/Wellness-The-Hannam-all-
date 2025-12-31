@@ -4,6 +4,7 @@ import { dbService, generateHannamFilename } from '../../services/dbService';
 import { Contract, ContractTemplate } from '../../types';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Plus, Search, Download, Calendar, Mail, Upload, X, Trash2, Edit3, Eye, Printer, ShieldCheck } from 'lucide-react';
+import { ADMIN_UI } from '../../constants/adminLocale';
 
 export const ContractDashboard: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -13,12 +14,9 @@ export const ContractDashboard: React.FC = () => {
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [resendingId, setResendingId] = useState<string | null>(null);
   
-  // Modal states
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [newTemplateTitle, setNewTemplateTitle] = useState('');
-  
-  // Contract View Modal
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,44 +37,37 @@ export const ContractDashboard: React.FC = () => {
     setResendingId(null);
   };
 
-  /**
-   * 계약서 다운로드: 요청하신 상세 내용과 파일명 형식을 적용
-   */
   const handleDownload = (c: Contract) => {
     const filename = generateHannamFilename(c.memberName, c.memberId, c.createdAt);
-    
     const content = `
 ==================================================
-        THE HANNAM OFFICIAL DIGITAL CONTRACT
+        더 한남 공식 디지털 계약서 (영수증)
 ==================================================
 
-1. DOCUMENT INFORMATION
-- Document ID: ${c.id.toUpperCase()}
-- Issued Date: ${new Date(c.createdAt).toLocaleString('ko-KR')}
-- Contract Type: ${c.typeName}
+1. 문서 정보
+- 문서 ID: ${c.id.toUpperCase()}
+- 발행 일시: ${new Date(c.createdAt).toLocaleString('ko-KR')}
+- 계약 유형: ${c.typeName}
 
-2. MEMBER INFORMATION
-- Member Name: ${c.memberName}
-- Member Phone: ${c.memberPhone}
-- Member Email: ${c.memberEmail}
-- Member Since: ${c.memberJoinedAt}
+2. 회원 정보
+- 성함: ${c.memberName}
+- 연락처: ${c.memberPhone}
+- 이메일: ${c.memberEmail}
+- 등록일: ${c.memberJoinedAt}
 
-3. FINANCIAL SUMMARY
-- Total Transaction Amount: ₩${c.amount.toLocaleString()}
-- Status: COMPLETED & VERIFIED
+3. 결제 요약
+- 총 계약 금액: ₩${c.amount.toLocaleString()}
+- 상태: 결제 및 검증 완료 (COMPLETED)
 
-4. LEGAL DECLARATION
-- This document serves as an official receipt and membership agreement 
-  for Wellness The Hannam. 
-- All digital signatures associated with this document are legally binding 
-  under the Electronic Transactions Act.
+4. 법적 고지
+- 본 문서는 더 한남 웰니스 센터의 공식 멤버십 계약서 및 영수증입니다.
+- 본 문서에 포함된 모든 디지털 서명은 전자거래기본법에 따라 법적 효력을 가집니다.
 
 --------------------------------------------------
-THE HANNAM WELLNESS REGISTRY CENTER
-HANNAM-DONG, SEOUL, KOREA
+더 한남 웰니스 레지스트리 센터
+서울특별시 한남동
 ==================================================
     `;
-    
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -123,13 +114,11 @@ HANNAM-DONG, SEOUL, KOREA
   };
 
   const handleDeleteTemplate = async (id: string, title: string) => {
-    if (confirm(`'${title}' 템플릿을 영구적으로 삭제하시겠습니까?\n이 작업은 취소할 수 없습니다.`)) {
+    if (confirm(`'${title}' 템플릿을 영구적으로 삭제하시겠습니까?`)) {
       await dbService.deleteTemplate(id);
       loadData();
     }
   };
-
-  const availableMonths = Array.from(new Set(contracts.map(c => c.yearMonth))).sort().reverse();
 
   const filteredContracts = contracts.filter(c => {
     const query = searchTerm.toLowerCase();
@@ -143,23 +132,23 @@ HANNAM-DONG, SEOUL, KOREA
       <div className="max-w-7xl mx-auto">
         <header className="flex justify-between items-end mb-16">
           <div>
-            <h1 className="text-3xl font-serif font-bold text-gray-900 mb-1 uppercase tracking-wider text-hannam-green">Contract Management</h1>
-            <p className="text-[10px] font-black text-[#C9B08F] uppercase tracking-[0.4em]">Digital Archive & Templates</p>
+            <h1 className="text-3xl font-serif font-bold text-gray-900 mb-1 uppercase tracking-wider text-hannam-green">{ADMIN_UI.contracts.title}</h1>
+            <p className="text-[10px] font-black text-[#C9B08F] uppercase tracking-[0.4em]">{ADMIN_UI.contracts.subtitle}</p>
           </div>
           <div className="flex gap-4">
             <button 
               onClick={() => navigate('/admin/contract/new')} 
               className="bg-[#1A362E] text-white px-10 py-5 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 hover:bg-black transition-all active:scale-95"
             >
-              <Plus className="w-4 h-4" /> 신규 계약서 작성
+              <Plus className="w-4 h-4" /> {ADMIN_UI.contracts.newContract}
             </button>
           </div>
         </header>
 
         <div className="flex justify-between items-center mb-10">
           <div className="flex bg-white p-1 rounded-2xl border border-gray-100 shadow-sm">
-             <button onClick={() => setActiveTab('inbox')} className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inbox' ? 'bg-[#1A362E] text-white shadow-md' : 'text-gray-400'}`}>계약서 보관함</button>
-             <button onClick={() => setActiveTab('forms')} className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'forms' ? 'bg-[#1A362E] text-white shadow-md' : 'text-gray-400'}`}>템플릿 관리</button>
+             <button onClick={() => setActiveTab('inbox')} className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inbox' ? 'bg-[#1A362E] text-white shadow-md' : 'text-gray-400'}`}>{ADMIN_UI.contracts.tabs.inbox}</button>
+             <button onClick={() => setActiveTab('forms')} className={`px-10 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'forms' ? 'bg-[#1A362E] text-white shadow-md' : 'text-gray-400'}`}>{ADMIN_UI.contracts.tabs.forms}</button>
           </div>
 
           <div className="flex gap-4">
@@ -167,15 +156,6 @@ HANNAM-DONG, SEOUL, KOREA
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
               <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="회원명, 번호 검색..." className="w-full pl-12 pr-6 py-3.5 bg-white border border-gray-100 rounded-2xl text-xs font-bold outline-none shadow-sm" />
             </div>
-            {activeTab === 'inbox' && (
-              <div className="relative">
-                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} className="pl-12 pr-10 py-3.5 bg-white border border-gray-100 rounded-2xl text-xs font-bold outline-none appearance-none shadow-sm">
-                  <option value="all">전체 날짜</option>
-                  {availableMonths.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
-            )}
           </div>
         </div>
 
@@ -184,10 +164,10 @@ HANNAM-DONG, SEOUL, KOREA
             <table className="w-full text-left">
                 <thead>
                   <tr className="bg-[#FBFBFB] text-[9px] font-black text-gray-300 uppercase tracking-widest border-b border-gray-50">
-                      <th className="px-10 py-6">회원 정보 / 문서명</th>
-                      <th className="px-10 py-6">계약 유형</th>
-                      <th className="px-10 py-6 text-center">금액</th>
-                      <th className="px-10 py-6 text-right">Actions</th>
+                      <th className="px-10 py-6">{ADMIN_UI.contracts.table.info}</th>
+                      <th className="px-10 py-6">{ADMIN_UI.contracts.table.type}</th>
+                      <th className="px-10 py-6 text-center">{ADMIN_UI.contracts.table.amount}</th>
+                      <th className="px-10 py-6 text-right">{ADMIN_UI.contracts.table.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -205,7 +185,7 @@ HANNAM-DONG, SEOUL, KOREA
                             <button 
                               onClick={() => setViewingContract(c)} 
                               className="p-3 bg-gray-50 rounded-xl text-gray-300 hover:text-hannam-green hover:bg-gray-100 transition-all shadow-sm" 
-                              title="계약서 디지털 뷰어"
+                              title="상세 보기"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -213,14 +193,14 @@ HANNAM-DONG, SEOUL, KOREA
                               onClick={() => handleResend(c)} 
                               disabled={resendingId === c.id}
                               className={`p-3 rounded-xl transition-all shadow-sm ${resendingId === c.id ? 'bg-gray-100 text-gray-300' : 'bg-[#E7F0FF] text-[#4A90E2] hover:bg-[#4A90E2] hover:text-white'}`}
-                              title="이메일 재발송"
+                              title="재전송"
                             >
                               <Mail className="w-4 h-4" />
                             </button>
                             <button 
                               onClick={() => handleDownload(c)} 
                               className="p-3 bg-gray-50 rounded-xl text-gray-300 hover:text-black transition-all shadow-sm" 
-                              title="상세 내역 다운로드"
+                              title="다운로드"
                             >
                               <Download className="w-4 h-4" />
                             </button>
@@ -228,7 +208,7 @@ HANNAM-DONG, SEOUL, KOREA
                       </tr>
                   ))}
                   {filteredContracts.length === 0 && (
-                    <tr><td colSpan={4} className="py-32 text-center text-gray-300 font-bold italic tracking-widest uppercase">No documents found in the archive.</td></tr>
+                    <tr><td colSpan={4} className="py-32 text-center text-gray-300 font-bold italic tracking-widest uppercase">계약 내역이 없습니다.</td></tr>
                   )}
                 </tbody>
             </table>
@@ -262,7 +242,7 @@ HANNAM-DONG, SEOUL, KOREA
         )}
       </div>
 
-      {/* Contract Viewer Modal (Visual "Image" Documents Simulator) */}
+      {/* Contract Viewer Modal */}
       {viewingContract && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[250] flex items-center justify-center p-8 overflow-y-auto">
            <div className="bg-white w-full max-w-4xl min-h-[90vh] rounded-3xl shadow-2xl flex flex-col animate-in zoom-in-95 duration-200 relative">
@@ -277,20 +257,19 @@ HANNAM-DONG, SEOUL, KOREA
 
               <div className="flex-1 p-16 md:p-24 overflow-y-auto print:p-0 flex justify-center">
                  <div className="w-full max-w-2xl border-2 border-gray-100 p-16 shadow-2xl relative bg-white aspect-[1/1.414] flex flex-col justify-between">
-                    {/* Visual Document Watermark */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none select-none">
                        <h2 className="text-[120px] font-serif font-bold -rotate-45">THE HANNAM</h2>
                     </div>
 
                     <header className="text-center mb-16 border-b border-gray-100 pb-12">
-                       <h2 className="text-3xl font-serif font-bold text-hannam-green tracking-widest uppercase mb-2">Service Membership Agreement</h2>
+                       <h2 className="text-3xl font-serif font-bold text-hannam-green tracking-widest uppercase mb-2">멤버십 서비스 계약서</h2>
                        <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.5em]">Official Digital Reference</p>
                     </header>
 
                     <section className="space-y-10 relative z-10">
                        <div className="grid grid-cols-2 gap-12">
                           <div className="space-y-4">
-                             <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest border-b border-gray-50 pb-2">Client Information</p>
+                             <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest border-b border-gray-50 pb-2">회원 정보</p>
                              <div className="space-y-2">
                                 <p className="text-sm font-bold text-gray-900">{viewingContract.memberName}</p>
                                 <p className="text-xs font-medium text-gray-500 num-clean">{viewingContract.memberPhone}</p>
@@ -298,7 +277,7 @@ HANNAM-DONG, SEOUL, KOREA
                              </div>
                           </div>
                           <div className="space-y-4 text-right">
-                             <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest border-b border-gray-50 pb-2 text-right">Registry Reference</p>
+                             <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest border-b border-gray-50 pb-2 text-right">문서 참조</p>
                              <div className="space-y-2">
                                 <p className="text-xs font-bold text-gray-900 num-clean">{viewingContract.id.toUpperCase()}</p>
                                 <p className="text-[10px] font-black text-hannam-gold uppercase tracking-widest">{viewingContract.createdAt.split('T')[0]}</p>
@@ -307,11 +286,11 @@ HANNAM-DONG, SEOUL, KOREA
                        </div>
 
                        <div className="bg-[#FBF9F6] p-10 rounded-2xl border border-gray-50">
-                          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Service Execution</h4>
+                          <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">계약 상세</h4>
                           <div className="flex justify-between items-end">
                              <div>
                                 <h3 className="text-2xl font-serif font-bold text-gray-900">{viewingContract.typeName}</h3>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-widest">Plan Activation Guaranteed</p>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-widest">Membership Activated</p>
                              </div>
                              <div className="text-right">
                                 <p className="text-3xl font-black text-hannam-green num-clean">₩{viewingContract.amount.toLocaleString()}</p>
@@ -323,17 +302,17 @@ HANNAM-DONG, SEOUL, KOREA
                           <div className="flex items-center gap-3">
                              <ShieldCheck className="w-10 h-10 text-hannam-gold opacity-30" />
                              <div>
-                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Authorized By</p>
+                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">승인자</p>
                                 <p className="text-xs font-bold text-gray-900 italic">Hannam Registry Center</p>
                              </div>
                           </div>
                           <div className="text-right flex flex-col items-end gap-3">
-                             <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Client Digital Seal</p>
+                             <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">회원 디지털 서명</p>
                              <div className="w-48 h-24 bg-gray-50/50 rounded-xl border border-gray-100 overflow-hidden flex items-center justify-center p-2 shadow-inner">
                                 {viewingContract.signature ? (
-                                   <img src={viewingContract.signature} alt="Client Signature" className="max-h-full object-contain mix-blend-multiply opacity-80 scale-125" />
+                                   <img src={viewingContract.signature} alt="서명" className="max-h-full object-contain mix-blend-multiply opacity-80 scale-125" />
                                 ) : (
-                                   <span className="text-[10px] text-gray-300 italic">No Digital Signature</span>
+                                   <span className="text-[10px] text-gray-300 italic">서명 없음</span>
                                 )}
                              </div>
                           </div>
@@ -345,48 +324,6 @@ HANNAM-DONG, SEOUL, KOREA
                     </footer>
                  </div>
               </div>
-           </div>
-        </div>
-      )}
-
-      {/* Template Upload/Edit Modal */}
-      {isTemplateModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-           <div className="bg-white w-full max-w-md rounded-[40px] p-12 shadow-2xl animate-in zoom-in-95">
-              <div className="flex justify-between items-center mb-10">
-                 <h2 className="text-xl font-serif font-bold text-gray-900 uppercase tracking-widest">
-                   {editingTemplateId ? 'Edit Template Form' : 'Upload New Template'}
-                 </h2>
-                 <button onClick={() => setIsTemplateModalOpen(false)}><X className="w-6 h-6 text-gray-300" /></button>
-              </div>
-              <form onSubmit={handleTemplateAction} className="space-y-6">
-                 <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Template Title</label>
-                    <input type="text" value={newTemplateTitle} onChange={e => setNewTemplateTitle(e.target.value)} placeholder="예: 골드 멤버십 계약서" className="w-full p-4 bg-gray-50 rounded-xl font-bold outline-none border border-transparent focus:border-hannam-gold" required />
-                 </div>
-                 
-                 {!editingTemplateId ? (
-                   <div className="p-10 border-2 border-dashed border-gray-100 rounded-3xl flex flex-col items-center">
-                      <input type="file" ref={fileInputRef} onChange={handleTemplateUpload} accept=".pdf" className="hidden" />
-                      <button 
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={!newTemplateTitle}
-                        className="px-8 py-3 bg-[#1A362E] text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
-                      >
-                        Select PDF File
-                      </button>
-                      <p className="text-[9px] text-gray-300 mt-4 font-bold">제목을 먼저 입력해주세요.</p>
-                   </div>
-                 ) : (
-                   <button 
-                     type="submit"
-                     className="w-full py-4 bg-[#1A362E] text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg"
-                   >
-                     수정 완료
-                   </button>
-                 )}
-              </form>
            </div>
         </div>
       )}

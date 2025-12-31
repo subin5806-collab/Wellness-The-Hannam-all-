@@ -1,14 +1,20 @@
 
 import { User, UserRole, PermissionScope, ROLE_SCOPES, Member } from '../types';
 
-// 메모리에만 사용자 정보를 유지 (새로고침 시 초기화됨)
 let currentUser: User | null = null;
 
 export const authService = {
   adminLogin: async (email: string, password: string): Promise<User> => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     
-    if (email === 'help@thehannam.com' && password === 'lucete800134') {
+    const adminConfigsRaw = localStorage.getItem('firestore_admin_config');
+    const adminConfigs = adminConfigsRaw ? JSON.parse(adminConfigsRaw) : [];
+    const customAdmin = adminConfigs.find((c: any) => c.email === email);
+
+    const validPassword = customAdmin ? customAdmin.password : 'lucete800134';
+    const validEmail = 'help@thehannam.com';
+
+    if (email === validEmail && password === validPassword) {
       const mockUser: User = {
         id: 'admin-hannam',
         name: 'Hannam Admin',
@@ -16,7 +22,7 @@ export const authService = {
         role: UserRole.SUPER_ADMIN,
       };
       currentUser = mockUser;
-      // localStorage.setItem 제거: 보안을 위해 브라우저에 저장하지 않음
+      localStorage.setItem('currentUser', JSON.stringify(mockUser));
       return mockUser;
     } else {
       throw new Error('관리자 이메일 또는 비밀번호가 일치하지 않습니다.');
@@ -44,18 +50,21 @@ export const authService = {
     };
     
     currentUser = user;
-    // localStorage.setItem 제거: 보안을 위해 브라우저에 저장하지 않음
+    localStorage.setItem('currentUser', JSON.stringify(user));
     return user;
   },
 
   logout: () => {
     currentUser = null;
-    // localStorage.removeItem은 더 이상 필요 없으나 안전을 위해 기존 데이터가 있다면 삭제
     localStorage.removeItem('currentUser');
   },
 
   getCurrentUser: (): User | null => {
     return currentUser;
+  },
+
+  setCurrentUser: (user: User) => {
+    currentUser = user;
   },
 
   hasPermission: (scope: PermissionScope): boolean => {

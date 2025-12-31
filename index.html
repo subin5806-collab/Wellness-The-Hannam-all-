@@ -6,25 +6,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WELLNESS, THE HANNAM</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              'hannam-bg': '#FDFDFD',
+              'hannam-bg': '#FBF9F6', // Warm Ivory (눈이 편안한 배경)
               'hannam-green': '#1A362E',
               'hannam-gold': '#B89C7A',
-              'hannam-gray-bg': '#F9F9F9',
-              'hannam-border': '#EAEAEA',
-              'hannam-text': '#1C1C1C',
-              'hannam-subtext': '#666666',
+              'hannam-border': '#EAE7E2',
+              'hannam-text': '#2D2D2D', // Charcoal
+              'hannam-muted': '#8E8E8E',
+              'hannam-card': '#FFFFFF',
             },
             fontFamily: {
               sans: ['Inter', 'Noto Sans KR', 'sans-serif'],
               serif: ['Cormorant Garamond', 'serif'],
-              display: ['Montserrat', 'sans-serif'],
             },
+            borderRadius: {
+              'hannam': '24px',
+            },
+            boxShadow: {
+              'hannam-soft': '0 4px 24px rgba(0, 0, 0, 0.02)', // 더 부드러운 그림자
+              'hannam-deep': '0 12px 48px rgba(0, 0, 0, 0.04)',
+            }
           }
         }
       }
@@ -32,65 +38,56 @@
     <style>
       body { 
         font-family: 'Inter', 'Noto Sans KR', sans-serif; 
-        background-color: #FDFDFD; 
-        color: #1C1C1C; 
-        letter-spacing: -0.01em;
+        background-color: #FBF9F6; 
+        color: #2D2D2D; 
+        letter-spacing: -0.02em;
         -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
       }
       .font-serif { font-family: 'Cormorant Garamond', serif; }
-      .font-display { font-family: 'Montserrat', sans-serif; }
       
-      .num-clean {
+      /* 숫자 스타일: 고정폭과 가독성 강조 */
+      .num-data {
         font-family: 'Inter', sans-serif;
         font-variant-numeric: tabular-nums;
-        letter-spacing: -0.02em;
-        font-weight: 600;
+        font-weight: 500;
+        letter-spacing: -0.03em;
       }
       
-      .tracking-widest {
-        letter-spacing: 0.15em;
-      }
-
-      .card-minimal {
+      /* 장식 제거 및 여백 강조 */
+      .card-premium {
         background: #FFFFFF;
-        border: 1px solid #EAEAEA;
-        border-radius: 12px;
-        transition: all 0.3s ease;
+        border: 1px solid #F1EFEA;
+        border-radius: 28px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+        transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
       }
       
-      .animate-fade-in { animation: fadeIn 0.5s ease-out; }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+      .card-premium:hover {
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+        transform: translateY(-1px);
       }
       
-      ::-webkit-scrollbar { width: 4px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: #E0E0E0; border-radius: 10px; }
-
-      .btn-primary {
+      .btn-hannam-primary {
         background-color: #1A362E;
         color: #FFFFFF;
-        transition: opacity 0.2s;
+        border-radius: 18px;
+        font-weight: 600;
+        transition: all 0.4s;
       }
-      .btn-primary:hover { opacity: 0.9; }
+      .btn-hannam-primary:hover { 
+        background-color: #000000;
+      }
       
-      .membership-card {
-        background: linear-gradient(135deg, #1A362E 0%, #142B24 100%);
-        box-shadow: 0 10px 30px rgba(26, 54, 46, 0.15);
-      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-      input[type="number"] {
-        font-variant-numeric: tabular-nums;
+      /* 애니메이션 최적화 */
+      .animate-smooth-fade {
+        animation: smoothFade 0.8s cubic-bezier(0.16, 1, 0.3, 1);
       }
-
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
+      @keyframes smoothFade {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
       }
     </style>
   <script type="importmap">

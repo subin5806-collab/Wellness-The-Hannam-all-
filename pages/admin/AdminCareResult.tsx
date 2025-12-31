@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { dbService, generateHannamFilename } from '../../services/dbService';
 import { CareRecord, Member } from '../../types';
-import { Mail, Smartphone, CheckCircle2, ChevronRight, Download, Printer, Share2 } from 'lucide-react';
+import { Mail, Smartphone, CheckCircle2, ChevronRight, Download } from 'lucide-react';
 
 export const AdminCareResult: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -36,134 +36,104 @@ export const AdminCareResult: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  if (!record || !member) return <div className="p-20 text-center animate-pulse text-gray-300 font-serif tracking-widest">Generating Official Receipt...</div>;
+  if (!record || !member) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-[0.3em]">Finalizing Transaction...</div>;
 
   const currentTime = new Date(record.createdAt).toLocaleString('ko-KR', {
     year: 'numeric', month: 'numeric', day: 'numeric',
-    hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true
+    hour: 'numeric', minute: 'numeric', hour12: true
   });
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] p-10 font-sans animate-fade-in">
-      <div className="max-w-6xl mx-auto flex justify-end items-center mb-8 gap-4">
-         <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full border border-gray-100 shadow-sm">
-            <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">System Online</span>
-         </div>
-         <div className="text-right border-l border-gray-200 pl-4">
-            <p className="text-xs font-black text-gray-900 leading-none">The Hannam</p>
-            <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">Manager</p>
+    <div className="min-h-screen bg-hannam-bg p-10 animate-smooth-fade">
+      <div className="max-w-6xl mx-auto flex justify-end items-center mb-10 gap-6">
+         <div className="flex items-center gap-2 bg-white px-4 py-1.5 rounded-full border border-hannam-border shadow-hannam-soft">
+            <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+            <span className="text-[9px] font-bold text-hannam-muted uppercase tracking-widest">System Sync Active</span>
          </div>
       </div>
 
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-stretch">
         
-        {/* Left Column: Official Receipt */}
-        <div className="lg:col-span-5 flex flex-col">
-           <div className="bg-white rounded-xl shadow-xl overflow-hidden relative flex-1 flex flex-col p-10 border border-gray-100 min-h-[650px]">
-              <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')]" />
-              
-              <div className="relative z-10 text-center mb-12">
-                 <h1 className="text-3xl font-serif font-bold text-[#1A362E] mb-1 uppercase tracking-wider">The Hannam</h1>
-                 <p className="text-[9px] font-black text-gray-300 uppercase tracking-[0.4em]">Official Receipt</p>
+        {/* Receipt Section */}
+        <div className="lg:col-span-5">
+           <div className="bg-white rounded-[32px] shadow-hannam-deep p-12 border border-[#F1EFEA] min-h-[680px] flex flex-col">
+              <div className="text-center mb-16">
+                 <h1 className="text-3xl font-serif font-bold text-hannam-green mb-1 uppercase tracking-widest">THE HANNAM</h1>
+                 <p className="text-[9px] font-bold text-hannam-muted uppercase tracking-[0.4em]">Official Digital Receipt</p>
               </div>
 
-              <div className="relative z-10 space-y-6 mb-10 border-t border-gray-50 pt-10 text-center">
-                 <button onClick={handleDownload} className="mx-auto mb-6 flex items-center gap-2 text-[10px] font-black uppercase text-hannam-gold tracking-widest hover:text-hannam-green transition-colors">
-                    <Download className="w-4 h-4" /> Download PDF Receipt
-                 </button>
-                 <div className="flex justify-between items-center px-4">
-                    <span className="text-gray-300 font-black uppercase tracking-widest text-[8px]">Date</span>
-                    <span className="font-bold text-gray-800 text-xs num-clean">{currentTime}</span>
+              <div className="space-y-8 mb-12 border-t border-[#F5F3EF] pt-12">
+                 <div className="flex justify-between items-center px-2">
+                    <span className="text-hannam-muted font-bold uppercase tracking-widest text-[9px]">Issued Date</span>
+                    <span className="font-bold text-hannam-text text-xs num-data">{currentTime}</span>
                  </div>
-                 <div className="flex justify-between items-center px-4">
-                    <span className="text-gray-300 font-black uppercase tracking-widest text-[8px]">Program</span>
-                    <span className="font-bold text-gray-800 text-xs">{record.content}</span>
+                 <div className="flex justify-between items-center px-2">
+                    <span className="text-hannam-muted font-bold uppercase tracking-widest text-[9px]">Curated Program</span>
+                    <span className="font-bold text-hannam-text text-xs">{record.content}</span>
                  </div>
               </div>
 
-              <div className="relative z-10 flex justify-between items-end mb-8 pt-8 border-t border-dashed border-gray-100 px-4">
-                 <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-2">Deducted</span>
-                 <span className="text-3xl font-serif font-bold text-gray-900 num-clean">-{record.discountedPrice.toLocaleString()}</span>
+              <div className="flex justify-between items-end mb-8 pt-10 border-t border-dashed border-hannam-border px-2">
+                 <span className="text-[9px] font-bold text-hannam-muted uppercase tracking-widest mb-2">Deduction</span>
+                 <span className="text-4xl font-serif font-bold text-hannam-green num-data">-{record.discountedPrice.toLocaleString()}</span>
               </div>
 
-              <div className="relative z-10 flex justify-between items-end mb-12 px-4">
-                 <span className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-2">Remaining</span>
-                 <span className="text-2xl font-serif font-bold text-[#C9B08F] num-clean">₩ {member.remaining.toLocaleString()}</span>
+              <div className="flex justify-between items-end mb-16 px-2">
+                 <span className="text-[9px] font-bold text-hannam-muted uppercase tracking-widest mb-2">Updated Balance</span>
+                 <span className="text-2xl font-serif font-bold text-hannam-gold num-data">₩ {member.remaining.toLocaleString()}</span>
               </div>
 
-              <div className="mt-auto relative z-10 flex flex-col items-center">
-                 <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest mb-4">Verification Signature</p>
-                 <div className="w-full max-w-[240px] h-28 bg-gray-50/30 rounded-xl flex items-center justify-center border border-gray-100 overflow-hidden shadow-inner">
+              <div className="mt-auto flex flex-col items-center py-6 bg-hannam-bg rounded-3xl">
+                 <p className="text-[9px] font-bold text-hannam-muted uppercase tracking-widest mb-6">Verification Seal</p>
+                 <div className="w-full max-w-[200px] h-28 flex items-center justify-center overflow-hidden">
                     {record.signature ? (
-                      <img src={record.signature} alt="Signature" className="max-h-full object-contain mix-blend-multiply opacity-70" />
+                      <img src={record.signature} alt="Seal" className="max-h-full object-contain mix-blend-multiply opacity-60" />
                     ) : (
-                      <span className="text-gray-200 italic font-serif text-xs">Unsigned</span>
+                      <span className="text-hannam-muted italic font-serif text-xs opacity-30">Pending Seal</span>
                     )}
                  </div>
-                 <p className="mt-5 text-[8px] font-mono text-gray-200 uppercase tracking-widest num-clean">TID: {record.id.toUpperCase()}</p>
+                 <p className="mt-6 text-[8px] font-mono text-hannam-muted opacity-40 uppercase tracking-widest num-data">TID: {record.id.toUpperCase()}</p>
               </div>
            </div>
         </div>
 
-        {/* Right Column: Notification Results */}
-        <div className="lg:col-span-7 flex flex-col space-y-5">
-           <h2 className="text-lg font-serif font-bold text-[#1A362E] flex items-center gap-3 mb-1 uppercase tracking-widest">
-              Notification Status
-           </h2>
-
-           <div className="card-minimal flex flex-col overflow-hidden shadow-sm">
-              <div className="px-6 py-4 bg-[#FBFBFB] border-b border-gray-50 flex justify-between items-center">
-                 <div className="flex items-center gap-3">
-                    <Mail className="w-3.5 h-3.5 text-gray-300" />
-                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Email Delivery</span>
-                 </div>
-                 <div className="flex items-center gap-1.5 text-green-500 font-black text-[8px] uppercase tracking-widest">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Sent
-                 </div>
+        {/* Status Section */}
+        <div className="lg:col-span-7 space-y-6 flex flex-col">
+           <div className="bg-white rounded-[32px] p-10 border border-[#F1EFEA] shadow-hannam-soft">
+              <div className="flex items-center gap-3 mb-10 border-b border-[#F5F3EF] pb-6">
+                 <Mail className="w-4 h-4 text-hannam-gold opacity-50" />
+                 <h2 className="text-sm font-bold text-hannam-text uppercase tracking-widest">Delivery Report</h2>
               </div>
-              <div className="p-6">
-                 <p className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-tighter">To: {member.email}</p>
-                 <h4 className="text-[13px] font-bold text-gray-900 mb-4">[Wellness] {record.content} Receipt Issued</h4>
-                 <div className="bg-gray-50/50 p-6 rounded-xl border border-gray-50 text-[10px] leading-relaxed text-gray-500">
-                    <div className="space-y-3 font-medium">
-                       <p className="text-hannam-gold font-black">발신: help@thehannam.com</p>
-                       <p>수신: {member.name} Member</p>
-                       <p className="pt-3 border-t border-gray-100">The Hannam Wellness 서비스를 이용해주셔서 감사합니다.</p>
-                       <div className="space-y-1 py-2">
-                          <p>[Program]: {record.content}</p>
-                          <p>[Amount]: -{record.discountedPrice.toLocaleString()} KRW</p>
-                          <p>[Balance]: {member.remaining.toLocaleString()} KRW</p>
-                       </div>
+              <div className="space-y-10">
+                 <div className="flex justify-between items-start">
+                    <div>
+                       <p className="text-[9px] font-bold text-hannam-muted uppercase tracking-widest mb-1.5">Email Delivery</p>
+                       <p className="text-xs font-bold text-hannam-text">{member.email}</p>
                     </div>
+                    <span className="text-[10px] font-bold text-green-600 uppercase flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-full"><CheckCircle2 className="w-3.5 h-3.5" /> Sent</span>
+                 </div>
+                 <div className="flex justify-between items-start">
+                    <div>
+                       <p className="text-[9px] font-bold text-hannam-muted uppercase tracking-widest mb-1.5">Mobile Gateway</p>
+                       <p className="text-xs font-bold text-hannam-text num-data">{member.phone}</p>
+                    </div>
+                    <span className="text-[10px] font-bold text-green-600 uppercase flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-full"><CheckCircle2 className="w-3.5 h-3.5" /> Delivered</span>
                  </div>
               </div>
            </div>
 
-           <div className="card-minimal overflow-hidden shadow-sm">
-              <div className="px-6 py-4 bg-[#FBFBFB] border-b border-gray-50 flex justify-between items-center">
-                 <div className="flex items-center gap-3">
-                    <Smartphone className="w-3.5 h-3.5 text-gray-300" />
-                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">SMS Gateway</span>
-                 </div>
-                 <div className="flex items-center gap-1.5 text-green-500 font-black text-[8px] uppercase tracking-widest">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Delivered
-                 </div>
-              </div>
-              <div className="p-6">
-                 <p className="text-[10px] text-gray-400 font-bold mb-3 uppercase tracking-tighter">To: {member.phone}</p>
-                 <div className="bg-gray-50 p-4 rounded-xl text-[11px] font-bold text-gray-700 leading-relaxed max-w-sm border border-gray-100">
-                    [The Hannam] {record.content} 이용 완료. -{record.discountedPrice.toLocaleString()}원. 잔액: {member.remaining.toLocaleString()}원.
-                 </div>
-              </div>
-           </div>
-
-           <div className="mt-auto pt-3">
+           <div className="mt-auto space-y-4">
+              <button 
+                onClick={handleDownload}
+                className="w-full py-5 bg-white border border-hannam-border text-hannam-text rounded-[24px] font-bold text-[11px] uppercase tracking-widest hover:bg-hannam-bg transition-all flex items-center justify-center gap-3"
+              >
+                <Download className="w-4 h-4" /> Export Document Archive
+              </button>
               <button 
                 onClick={() => navigate(`/admin/member/${member.id}`)}
-                className="w-full py-5 bg-[#1A1A1A] text-white rounded-xl font-black text-[10px] uppercase tracking-[0.3em] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3"
+                className="w-full py-6 bg-hannam-green text-white rounded-[24px] font-bold text-[11px] uppercase tracking-[0.2em] shadow-lg hover:bg-black transition-all flex items-center justify-center gap-3"
               >
-                Back to Member Profile <ChevronRight className="w-3.5 h-3.5" />
+                Return to Registry <ChevronRight className="w-4 h-4" />
               </button>
            </div>
         </div>

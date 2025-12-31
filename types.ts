@@ -6,6 +6,33 @@ export enum UserRole {
   MEMBER = 'MEMBER',
 }
 
+// Added PermissionScope for authorization logic
+export enum PermissionScope {
+  DASHBOARD_VIEW = 'DASHBOARD_VIEW',
+  MEMBER_MANAGE = 'MEMBER_MANAGE',
+  CARE_MANAGE = 'CARE_MANAGE',
+  CONTRACT_MANAGE = 'CONTRACT_MANAGE',
+  INQUIRY_MANAGE = 'INQUIRY_MANAGE',
+}
+
+// Added ROLE_SCOPES mapping
+export const ROLE_SCOPES: Record<UserRole, PermissionScope[]> = {
+  [UserRole.SUPER_ADMIN]: Object.values(PermissionScope),
+  [UserRole.ADMIN]: [
+    PermissionScope.DASHBOARD_VIEW,
+    PermissionScope.MEMBER_MANAGE,
+    PermissionScope.CARE_MANAGE,
+    PermissionScope.CONTRACT_MANAGE,
+    PermissionScope.INQUIRY_MANAGE,
+  ],
+  [UserRole.STAFF]: [
+    PermissionScope.DASHBOARD_VIEW,
+    PermissionScope.MEMBER_MANAGE,
+    PermissionScope.CARE_MANAGE,
+  ],
+  [UserRole.MEMBER]: [],
+};
+
 export interface User {
   id: string;
   name: string;
@@ -13,27 +40,32 @@ export interface User {
   role: UserRole;
 }
 
-export interface Therapist {
-  id: string;
-  name: string;
-  specialty: string;
-  phone: string;
-  createdAt: string;
-}
-
-export enum PermissionScope {
-  CARE_WRITE = 'care:write',
-  CARE_READ = 'care:read',
-  MEMBER_READ = 'member:read',
-  MEMBER_WRITE = 'member:write',
-  RESERVATION_MANAGE = 'reservation:manage',
-  SIGNATURE_SIGN = 'signature:sign',
-}
-
 export enum CareStatus {
-  WAITING_SIGNATURE = 'waiting-signature',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
+  REQUESTED = 'REQUESTED', // 차감 완료, 서명 요청됨
+  SIGNED = 'SIGNED',       // 서명 완료
+  EXPIRED = 'EXPIRED',     // 서명 미진행 (차감은 유지)
+  CANCELLED = 'CANCELLED', // 결제 취소 및 환불됨
+}
+
+export interface CareRecord {
+  id: string;
+  memberId: string;
+  therapistId: string;
+  therapistName: string;
+  date: string;
+  yearMonth: string;
+  content: string;
+  originalPrice: number;
+  discountRate: number;
+  discountedPrice: number;
+  feedback: string;
+  recommendation: string;
+  status: CareStatus;
+  signature?: string;
+  signedAt?: string;
+  resendCount: number;      // 서명 재요청 횟수
+  requestedAt: string;     // 최초/최근 요청 시각
+  createdAt: string;
 }
 
 export enum MemberTier {
@@ -59,28 +91,6 @@ export interface Member {
   joinedAt: string;
   expiryDate?: string; 
   adminNote?: string;
-  address?: string;
-  lastModifiedBy?: string;
-  lastModifiedAt?: string;
-}
-
-export interface CareRecord {
-  id: string;
-  memberId: string;
-  therapistId: string;
-  therapistName: string;
-  date: string;
-  yearMonth: string;
-  content: string;
-  originalPrice: number;
-  discountRate: number;
-  discountedPrice: number;
-  feedback: string;
-  recommendation: string;
-  status: CareStatus;
-  signature?: string;
-  signedAt?: string;
-  createdAt: string;
 }
 
 export interface Reservation {
@@ -91,39 +101,60 @@ export interface Reservation {
   therapistName: string;
   dateTime: string;
   serviceType: string;
+  price?: number;
   status: 'booked' | 'cancelled' | 'attended';
-}
-
-export interface ContractTemplate {
-  id: string;
-  title: string;
-  type: 'MEMBERSHIP' | 'WAIVER' | 'PT_AGREEMENT';
-  pdfName: string;
-  fileData?: string; // 실제 PDF/이미지 파일 바이너리(Base64)
-  contentBody: string;
-  createdAt: string;
 }
 
 export interface Contract {
   id: string;
-  templateId?: string;
   memberId: string;
   memberName: string;
   memberEmail: string;
   memberPhone: string;
-  memberJoinedAt: string;
+  memberJoinedAt: string; // Added missing field
   type: 'MEMBERSHIP' | 'WAIVER' | 'PT_AGREEMENT';
   typeName: string;
   amount: number;
   status: 'COMPLETED' | 'PENDING';
   signature?: string;
-  pdfName?: string;
-  pdfUrl?: string; 
   yearMonth: string;
   createdAt: string;
 }
 
-export type InquiryStatus = 'UNREGISTERED' | 'IN_PROGRESS' | 'REGISTERED' | 'COMPLETED';
+// Added missing ContractTemplate interface
+export interface ContractTemplate {
+  id: string;
+  title: string;
+  type: string;
+  pdfName: string;
+  contentBody: string;
+  fileData?: string;
+  createdAt: string;
+}
+
+// Added missing Therapist interface
+export interface Therapist {
+  id: string;
+  name: string;
+  specialty: string;
+  phone: string;
+}
+
+// Added missing Product interface
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+}
+
+// Added Inquiry related types
+export enum InquiryStatus {
+  UNREGISTERED = 'UNREGISTERED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  REGISTERED = 'REGISTERED',
+  COMPLETED = 'COMPLETED',
+}
+
 export type InquiryPath = 'PHONE' | 'VISIT' | 'WEB' | 'SNS' | 'ETC';
 
 export interface InquiryLog {
@@ -138,20 +169,12 @@ export interface Inquiry {
   memberName: string;
   phone: string;
   path: InquiryPath;
-  content: string; 
-  logs: InquiryLog[]; 
+  content: string;
   status: InquiryStatus;
-  needsFollowUp: boolean; 
-  receivedBy: string; 
-  assignedStaff: string; 
-  createdAt: string; 
-  yearMonth: string; 
-  updatedAt: string;
+  needsFollowUp: boolean;
+  receivedBy: string;
+  assignedStaff: string;
+  yearMonth: string;
+  logs: InquiryLog[];
+  createdAt: string;
 }
-
-export const ROLE_SCOPES: Record<UserRole, PermissionScope[]> = {
-  [UserRole.SUPER_ADMIN]: Object.values(PermissionScope) as PermissionScope[],
-  [UserRole.ADMIN]: Object.values(PermissionScope) as PermissionScope[],
-  [UserRole.STAFF]: [PermissionScope.CARE_WRITE, PermissionScope.CARE_READ, PermissionScope.MEMBER_READ, PermissionScope.RESERVATION_MANAGE],
-  [UserRole.MEMBER]: [PermissionScope.CARE_READ, PermissionScope.SIGNATURE_SIGN],
-};
