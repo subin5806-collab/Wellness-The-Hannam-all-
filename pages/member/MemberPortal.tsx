@@ -3,8 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { dbService } from '../../services/dbService';
 import { Member, CareRecord, Reservation, CareStatus } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import { LayoutGrid, RefreshCw, Clock, Sparkles, AlertCircle, LogOut, ChevronRight, FileText, CheckCircle2 } from 'lucide-react';
-import { SignaturePad } from '../../components/SignaturePad';
+import { LayoutGrid, RefreshCw, Clock, Sparkles, AlertCircle, LogOut, ChevronRight, FileText, CheckCircle2, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { useLanguage } from '../../LanguageContext';
 
@@ -16,8 +15,6 @@ export const MemberPortal: React.FC = () => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [pendingRecord, setPendingRecord] = useState<CareRecord | null>(null);
   const [activeTab, setActiveTab] = useState<'home' | 'history' | 'notes'>('home');
-  const [signature, setSignature] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
   
   const navigate = useNavigate();
 
@@ -37,27 +34,9 @@ export const MemberPortal: React.FC = () => {
       setMember(m);
       setHistory(h);
       setReservations(r);
-      // [상태값 변경] REQUESTED 상태인 것만 서명 유도
+      // REQUESTED 상태인 내역 중 가장 최신 것 하나만 알림으로 표시
       const pending = h.find(rec => rec.status === CareStatus.REQUESTED);
       setPendingRecord(pending || null);
-    }
-  };
-
-  const handleSignComplete = async () => {
-    if (!pendingRecord || !signature) return;
-    setIsProcessing(true);
-    try {
-      const success = await dbService.signCareRecord(pendingRecord.id, signature);
-      if (success) {
-        alert(lang === 'ko' ? '기록 확인이 완료되었습니다.' : 'Confirmation complete.');
-        setPendingRecord(null);
-        setSignature('');
-        await loadMemberData();
-      }
-    } catch (e) { 
-      alert('Error occurred.'); 
-    } finally { 
-      setIsProcessing(false); 
     }
   };
 
@@ -94,31 +73,32 @@ export const MemberPortal: React.FC = () => {
            </div>
         </section>
 
-        {/* 1. 서명 요청 알림 (최상단 고정) */}
+        {/* 1. 세션 확인 알림 (트리거) */}
         {pendingRecord && (
-          <section className="bg-white rounded-[32px] shadow-xl border-2 border-hannam-gold/20 p-8 space-y-6 animate-smooth-fade">
+          <section 
+            onClick={() => navigate(`/contract/${pendingRecord.id}`)}
+            className="bg-white rounded-[32px] shadow-xl border-2 border-hannam-gold/20 p-8 space-y-6 animate-smooth-fade cursor-pointer hover:border-hannam-gold group transition-all"
+          >
             <div className="flex justify-between items-start">
-              <div>
-                <h2 className="text-lg font-bold text-hannam-text">내역 확인 요청</h2>
-                <p className="text-[10px] font-bold text-hannam-gold uppercase tracking-widest mt-1">차감 완료 / 사후 서명 요청</p>
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold text-hannam-text">웰니스 케어 내역 처리됨</h2>
+                <p className="text-[10px] font-bold text-hannam-gold uppercase tracking-widest">결제 차감 완료 및 케어 리포트 도착</p>
               </div>
-              <AlertCircle className="w-5 h-5 text-hannam-gold" />
+              <div className="w-10 h-10 bg-hannam-bg rounded-xl flex items-center justify-center text-hannam-gold">
+                <AlertCircle className="w-5 h-5" />
+              </div>
             </div>
-            <div className="bg-[#FBF9F6] rounded-2xl p-5 space-y-3">
-              <div className="flex justify-between items-center text-xs font-bold"><span className="text-gray-400">서비스</span><span>{pendingRecord.content}</span></div>
+            <div className="bg-[#FBF9F6] rounded-2xl p-5">
+              <div className="flex justify-between items-center text-xs font-bold mb-3"><span className="text-gray-400">항목</span><span>{pendingRecord.content}</span></div>
               <div className="flex justify-between items-center pt-3 border-t border-gray-100"><span className="text-gray-400">차감액</span><span className="num-data text-red-500">- ₩{pendingRecord.discountedPrice.toLocaleString()}</span></div>
             </div>
-            <div className="h-40 bg-[#FBF9F6] rounded-2xl border border-gray-100 overflow-hidden relative shadow-inner">
-               <SignaturePad onSave={setSignature} onClear={() => setSignature('')} />
-               {!signature && <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30 text-[9px] font-bold uppercase tracking-widest">이곳에 서명해 주세요</div>}
+            <div className="flex items-center justify-center gap-2 text-[11px] font-black text-hannam-green uppercase tracking-widest pt-2">
+               리포트 확인 및 디지털 서명하기 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
-            <button onClick={handleSignComplete} disabled={!signature || isProcessing} className="w-full py-5 bg-hannam-green text-white rounded-[20px] text-[11px] font-black uppercase tracking-widest shadow-lg disabled:opacity-20">
-               {isProcessing ? 'Verifying...' : '서명 전송 및 확인 완료'}
-            </button>
           </section>
         )}
 
-        {/* 2. 웰니스 케어 노트 (상시 노출) */}
+        {/* 2. 웰니스 케어 노트 인사이트 */}
         <section className="space-y-6">
            <div className="flex items-center gap-3 px-4">
               <Sparkles className="w-5 h-5 text-hannam-gold" />
@@ -127,20 +107,24 @@ export const MemberPortal: React.FC = () => {
            
            {history.filter(h => h.status === CareStatus.SIGNED).length > 0 ? (
              history.filter(h => h.status === CareStatus.SIGNED).slice(0, 2).map(item => (
-               <div key={item.id} className="bg-white rounded-[32px] p-8 border border-[#F1EFEA] shadow-hannam-soft space-y-6 relative overflow-hidden">
+               <div 
+                 key={item.id} 
+                 onClick={() => navigate(`/contract/${item.id}`)}
+                 className="bg-white rounded-[32px] p-8 border border-[#F1EFEA] shadow-hannam-soft space-y-6 relative overflow-hidden cursor-pointer hover:shadow-hannam-deep transition-all group"
+               >
                   <div className="flex justify-between items-start">
                      <div>
                         <p className="text-[9px] font-black text-gray-300 uppercase mb-1">{item.date} Service Recap</p>
-                        <h4 className="text-sm font-black text-hannam-text">{item.content}</h4>
+                        <h4 className="text-sm font-black text-hannam-text group-hover:text-hannam-green transition-colors">{item.content}</h4>
                      </div>
                      <CheckCircle2 className="w-4 h-4 text-green-500" />
                   </div>
                   <div className="bg-[#FBF9F6] p-6 rounded-2xl italic">
-                     <p className="text-xs text-hannam-text leading-relaxed font-medium">"{item.feedback || '전담 전문가의 코멘트를 준비 중입니다.'}"</p>
+                     <p className="text-xs text-hannam-text leading-relaxed font-medium line-clamp-2">"{item.feedback || '전담 전문가의 코멘트를 준비 중입니다.'}"</p>
                   </div>
-                  <div className="pt-2">
-                     <p className="text-[9px] font-black text-hannam-gold uppercase tracking-widest mb-2">Expert Recommendation</p>
-                     <p className="text-xs font-bold text-hannam-green leading-relaxed">{item.recommendation || '최상의 컨디션을 위해 다음 전략을 구상 중입니다.'}</p>
+                  <div className="flex items-center justify-between pt-2">
+                     <span className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">View Detailed Insight</span>
+                     <ChevronRight className="w-3.5 h-3.5 text-gray-200 group-hover:text-hannam-gold transition-colors" />
                   </div>
                </div>
              ))

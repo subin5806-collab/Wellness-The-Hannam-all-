@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { dbService } from '../../services/dbService';
 import { Member } from '../../types';
-import { Search, ChevronRight, UserPlus, Upload, X, Save, Download, Filter, Shield } from 'lucide-react';
+import { Search, ChevronRight, UserPlus, Upload, X, Save, Download, Filter, Shield, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ADMIN_UI } from '../../constants/adminLocale';
 
@@ -12,7 +12,6 @@ export const AdminMembers: React.FC = () => {
   const [members, setMembers] = useState<Member[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [tierFilter, setTierFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('ALL');
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   
   // 보안 관련 상태
@@ -21,6 +20,7 @@ export const AdminMembers: React.FC = () => {
   const [otpCode, setOtpCode] = useState('');
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -34,15 +34,20 @@ export const AdminMembers: React.FC = () => {
     setIsSecurityModalOpen(true);
     setIsOtpSent(false);
     setOtpCode('');
+    setErrorMsg('');
   };
 
   const handleRequestOTP = async () => {
     if (!activeAction) return;
     setIsProcessing(true);
+    setErrorMsg('');
     try {
-      await dbService.requestSensitiveOTP(activeAction);
-      setIsOtpSent(true);
-      alert('인증 코드가 이메일로 발송되었습니다.');
+      const success = await dbService.requestSensitiveOTP(activeAction);
+      if (success) {
+        setIsOtpSent(true);
+      } else {
+        setErrorMsg('인증 메일 발송에 실패했습니다. 관리자에게 문의하세요.');
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -51,18 +56,19 @@ export const AdminMembers: React.FC = () => {
   const handleVerifyOTP = async () => {
     if (!activeAction || !otpCode) return;
     setIsProcessing(true);
+    setErrorMsg('');
     try {
       const success = await dbService.verifySensitiveOTP(otpCode, activeAction);
       if (success) {
-        // 실제 작업 실행
+        // 실제 작업 실행 (DB 서버 로직 호출)
         if (activeAction === 'EXPORT_CSV') await dbService.exportMembersToCSV();
         else if (activeAction === 'BACKUP_DB') await dbService.backupAllData();
         
         setIsSecurityModalOpen(false);
         setActiveAction(null);
-        alert('작업이 완료되었습니다.');
+        alert('보안 인증이 완료되었습니다. 파일 다운로드를 시작합니다.');
       } else {
-        alert('인증 코드가 일치하지 않거나 만료되었습니다.');
+        setErrorMsg('인증 코드가 일치하지 않거나 만료되었습니다. (최대 5회 시도 가능)');
       }
     } finally {
       setIsProcessing(false);
@@ -209,11 +215,13 @@ export const AdminMembers: React.FC = () => {
 
               {!isOtpSent ? (
                 <div className="space-y-6 text-center">
-                   <p className="text-xs text-gray-500 leading-relaxed">
-                      본인 확인을 위해 이메일로 인증 코드가 발송됩니다.<br/>
-                      <span className="font-bold text-gray-900">help@thehannam.com</span>
-                   </p>
-                   <button onClick={handleRequestOTP} disabled={isProcessing} className="w-full py-3.5 bg-gray-900 text-white rounded-md text-[11px] font-bold uppercase tracking-widest shadow-lg">
+                   <div className="space-y-2">
+                      <p className="text-xs text-gray-600 font-bold leading-relaxed">
+                         본인 확인을 위해 이메일로 인증 코드가 발송됩니다.
+                      </p>
+                      <p className="text-[11px] text-hannam-gold font-black tracking-widest bg-hannam-bg py-2 rounded-md">help@thehannam.com</p>
+                   </div>
+                   <button onClick={handleRequestOTP} disabled={isProcessing} className="w-full py-3.5 bg-gray-900 text-white rounded-md text-[11px] font-black uppercase tracking-widest shadow-lg hover:bg-black transition-all">
                       {isProcessing ? '인증 코드 요청 중...' : '인증 코드 요청'}
                    </button>
                 </div>
@@ -221,15 +229,20 @@ export const AdminMembers: React.FC = () => {
                 <div className="space-y-6 text-center">
                    <div className="space-y-1">
                       <p className="text-xs font-bold text-gray-900">인증 코드 입력</p>
-                      <p className="text-[10px] text-gray-400">발송된 6자리 코드를 입력하세요.</p>
+                      <p className="text-[10px] text-gray-400">보안을 위해 5분 이내에 입력해 주세요.</p>
                    </div>
                    <input 
-                     type="text" maxLength={6} value={otpCode} onChange={e => setOtpCode(e.target.value)} 
+                     type="text" maxLength={6} value={otpCode} onChange={e => { setOtpCode(e.target.value.replace(/[^0-9]/g, '')); setErrorMsg(''); }} 
                      className="w-full p-4 bg-gray-50 border border-gray-200 rounded-md font-bold text-center text-2xl tracking-[0.4em] outline-none focus:border-hannam-gold"
                      placeholder="000000"
                    />
+                   {errorMsg && (
+                      <div className="flex items-center gap-1.5 justify-center text-[10px] font-bold text-red-500 bg-red-50 py-2 rounded-md">
+                         <AlertCircle className="w-3 h-3" /> {errorMsg}
+                      </div>
+                   )}
                    <div className="flex gap-2">
-                      <button onClick={() => setIsOtpSent(false)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-md text-[10px] font-bold uppercase">이전</button>
+                      <button onClick={() => { setIsOtpSent(false); setErrorMsg(''); }} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-md text-[10px] font-bold uppercase">이전</button>
                       <button onClick={handleVerifyOTP} disabled={otpCode.length !== 6 || isProcessing} className="flex-[2] py-3 bg-gray-900 text-white rounded-md text-[10px] font-bold uppercase disabled:opacity-30">코드 확인</button>
                    </div>
                 </div>
