@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { dbService, generateHannamFilename } from '../../services/dbService';
+import { dbService } from '../../services/dbService';
 import { Contract, ContractTemplate } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Plus, Search, Download, Calendar, Mail, Upload, X, Trash2, Edit3, Eye, Printer, ShieldCheck } from 'lucide-react';
+import { FileText, Plus, Search, Download, Trash2, Edit3, Eye, Upload, X, ShieldCheck, ChevronRight } from 'lucide-react';
 import { ADMIN_UI } from '../../constants/adminLocale';
 
 export const ContractDashboard: React.FC = () => {
@@ -14,7 +14,6 @@ export const ContractDashboard: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [newTemplateTitle, setNewTemplateTitle] = useState('');
   const [viewingContract, setViewingContract] = useState<Contract | null>(null);
   
@@ -41,12 +40,12 @@ export const ContractDashboard: React.FC = () => {
     setIsProcessing(true);
     try {
       await dbService.uploadTemplate(newTemplateTitle, file);
-      alert('템플릿이 성공적으로 DB에 저장되었습니다.');
+      alert('새로운 계약 템플릿이 보관함에 저장되었습니다.');
       setIsTemplateModalOpen(false);
       setNewTemplateTitle('');
-      await loadData(); // DB 재조회하여 정합성 유지
+      await loadData();
     } catch (err) {
-      alert('파일 저장 실패');
+      alert('파일 업로드 중 오류가 발생했습니다.');
     } finally {
       setIsProcessing(false);
     }
@@ -64,77 +63,127 @@ export const ContractDashboard: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#FBF9F6] p-8 font-sans animate-smooth-fade">
+    <div className="min-h-screen bg-hannam-bg p-10 font-sans animate-smooth-fade">
       <div className="max-w-7xl mx-auto">
-        <header className="flex justify-between items-end mb-10">
+        <header className="flex justify-between items-end mb-12 border-b border-hannam-border pb-10">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{ADMIN_UI.contracts.title}</h1>
-            <p className="text-[11px] font-medium text-gray-400 mt-1 uppercase tracking-wider">{ADMIN_UI.contracts.subtitle}</p>
+            <h1 className="text-3xl font-serif font-bold text-hannam-green tracking-tight uppercase">Document Archive</h1>
+            <p className="text-[11px] font-black text-hannam-gold uppercase tracking-[0.3em] mt-2">{ADMIN_UI.contracts.subtitle}</p>
           </div>
           <button 
             onClick={() => navigate('/admin/contract/new')} 
-            className="px-6 py-3 bg-gray-900 text-white rounded-md text-[11px] font-bold uppercase tracking-widest hover:bg-black transition-all"
+            className="bg-hannam-green text-white px-8 py-3.5 rounded-xl text-[12px] font-bold flex items-center gap-2.5 shadow-hannam-deep hover:bg-black transition-all active:scale-95"
           >
-            <Plus className="w-3.5 h-3.5 inline mr-2" /> {ADMIN_UI.contracts.newContract}
+            <Plus className="w-4.5 h-4.5" /> {ADMIN_UI.contracts.newContract}
           </button>
         </header>
 
         <div className="flex gap-4 mb-8">
-           <div className="flex bg-white p-1 rounded-md border border-gray-200">
-             <button onClick={() => setActiveTab('inbox')} className={`px-6 py-2 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === 'inbox' ? 'bg-gray-900 text-white' : 'text-gray-400'}`}>{ADMIN_UI.contracts.tabs.inbox}</button>
-             <button onClick={() => setActiveTab('forms')} className={`px-6 py-2 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === 'forms' ? 'bg-gray-900 text-white' : 'text-gray-400'}`}>{ADMIN_UI.contracts.tabs.forms}</button>
+           <div className="flex bg-white p-1.5 rounded-2xl border border-hannam-border shadow-hannam-soft">
+              <button 
+                onClick={() => setActiveTab('inbox')} 
+                className={`px-8 py-2.5 rounded-xl text-[12px] font-bold transition-all ${activeTab === 'inbox' ? 'bg-hannam-bg text-hannam-green shadow-inner' : 'text-hannam-muted hover:text-hannam-text'}`}
+              >
+                계약 보관함
+              </button>
+              <button 
+                onClick={() => setActiveTab('forms')} 
+                className={`px-8 py-2.5 rounded-xl text-[12px] font-bold transition-all ${activeTab === 'forms' ? 'bg-hannam-bg text-hannam-green shadow-inner' : 'text-hannam-muted hover:text-hannam-text'}`}
+              >
+                템플릿 관리
+              </button>
            </div>
            <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-              <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="회원명 검색..." className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-md text-xs font-medium outline-none focus:border-gray-400" />
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-hannam-border" />
+              <input 
+                type="text" 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+                placeholder="회원 성함 또는 연락처로 계약서 검색..." 
+                className="w-full pl-14 pr-6 py-4 bg-white border border-hannam-border rounded-2xl text-[13px] font-bold outline-none focus:border-hannam-gold shadow-hannam-soft transition-all" 
+              />
            </div>
         </div>
 
         {activeTab === 'inbox' ? (
-          <div className="bg-white rounded-md border border-gray-200 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-[40px] border border-hannam-border overflow-hidden shadow-hannam-soft">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase border-b border-gray-200">
-                  <th className="px-6 py-4">계약자 정보</th>
-                  <th className="px-6 py-4">유형</th>
-                  <th className="px-6 py-4 text-right">금액</th>
-                  <th className="px-6 py-4 text-right">관리</th>
+                <tr className="bg-hannam-bg/40 text-[11px] font-bold text-hannam-muted uppercase border-b border-hannam-border">
+                  <th className="px-10 py-6">계약 체결 정보</th>
+                  <th className="px-10 py-6">문서 유형</th>
+                  <th className="px-10 py-6 text-right">계약 금액</th>
+                  <th className="px-10 py-6 text-right">관리 제어</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-hannam-border">
                 {filteredContracts.map(c => (
-                  <tr key={c.id} className="hover:bg-gray-50/50">
-                    <td className="px-6 py-5">
-                      <p className="text-xs font-bold text-gray-900">{c.memberName}</p>
-                      <p className="text-[10px] text-gray-400 font-mono mt-0.5">{c.id.toUpperCase()}</p>
+                  <tr key={c.id} className="group hover:bg-hannam-bg/20 transition-colors">
+                    <td className="px-10 py-6">
+                      <div className="flex items-center gap-4">
+                         <div className="w-10 h-10 bg-hannam-bg rounded-full flex items-center justify-center text-hannam-green font-serif font-black border border-hannam-border">
+                           {c.memberName[0]}
+                         </div>
+                         <div>
+                            <p className="text-[14px] font-black text-hannam-text group-hover:text-hannam-green transition-colors">{c.memberName} 님</p>
+                            <p className="text-[10px] text-hannam-muted font-bold mt-0.5 uppercase tracking-tighter">체결일: {c.createdAt.split('T')[0]}</p>
+                         </div>
+                      </div>
                     </td>
-                    <td className="px-6 py-5">
-                      <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-sm uppercase">{c.typeName}</span>
+                    <td className="px-10 py-6">
+                      <span className="text-[10px] font-black text-hannam-gold bg-hannam-bg px-3 py-1.5 rounded-lg border border-hannam-gold/20 uppercase tracking-tight">{c.typeName}</span>
                     </td>
-                    <td className="px-6 py-5 text-right font-bold text-gray-900 num-data">₩{c.amount.toLocaleString()}</td>
-                    <td className="px-6 py-5 text-right">
-                      <button onClick={() => setViewingContract(c)} className="text-gray-300 hover:text-gray-900 transition-colors p-2"><Eye className="w-4 h-4" /></button>
+                    <td className="px-10 py-6 text-right font-black text-hannam-text text-[15px] num-data">
+                      <span className="text-[11px] mr-1 opacity-40">₩</span>{c.amount.toLocaleString()}
+                    </td>
+                    <td className="px-10 py-6 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => setViewingContract(c)} className="p-3 text-hannam-border hover:text-hannam-green transition-colors bg-hannam-bg rounded-xl border border-transparent hover:border-hannam-border">
+                          <Eye className="w-4.5 h-4.5" />
+                        </button>
+                        <button className="p-3 text-hannam-border hover:text-hannam-gold transition-colors">
+                          <Download className="w-4.5 h-4.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
+                {filteredContracts.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-32 text-center">
+                       <FileText className="w-12 h-12 text-hannam-border mx-auto mb-6 opacity-40" />
+                       <p className="text-[13px] text-hannam-muted font-bold tracking-tight">저장된 전자 계약서 내역이 없습니다.</p>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-5">
-             <div onClick={() => { setNewTemplateTitle(''); setIsTemplateModalOpen(true); }} className="bg-white border-2 border-dashed border-gray-200 p-8 rounded-md flex flex-col items-center justify-center cursor-pointer hover:border-gray-400 transition-all group h-48">
-                <Upload className="w-8 h-8 text-gray-200 group-hover:text-gray-400 mb-4" />
-                <span className="text-[11px] font-bold text-gray-400 uppercase">신규 템플릿 업로드</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+             <div 
+               onClick={() => { setNewTemplateTitle(''); setIsTemplateModalOpen(true); }} 
+               className="bg-white border-2 border-dashed border-hannam-border p-10 rounded-[32px] flex flex-col items-center justify-center cursor-pointer hover:border-hannam-gold hover:bg-hannam-bg/20 transition-all group h-[280px]"
+             >
+                <div className="w-16 h-16 bg-hannam-bg rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                   <Upload className="w-7 h-7 text-hannam-gold" />
+                </div>
+                <span className="text-[12px] font-black text-hannam-muted uppercase tracking-widest group-hover:text-hannam-green transition-colors">신규 템플릿 등록</span>
              </div>
              {templates.map(tmpl => (
-               <div key={tmpl.id} className="bg-white border border-gray-200 p-6 rounded-md shadow-sm relative group h-48 flex flex-col justify-between">
+               <div key={tmpl.id} className="bg-white border border-hannam-border p-10 rounded-[32px] shadow-hannam-soft relative group h-[280px] flex flex-col justify-between hover:border-hannam-gold transition-all">
                   <div className="flex justify-between items-start">
-                    <FileText className="w-8 h-8 text-gray-200" />
-                    <button onClick={() => handleDeleteTemplate(tmpl.id, tmpl.title)} className="text-gray-200 hover:text-red-500 p-2"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <div className="w-12 h-12 bg-hannam-bg rounded-2xl flex items-center justify-center text-hannam-gold">
+                       <FileText className="w-6 h-6" />
+                    </div>
+                    <button onClick={() => handleDeleteTemplate(tmpl.id, tmpl.title)} className="text-hannam-border hover:text-red-400 p-2 transition-colors"><Trash2 className="w-4.5 h-4.5" /></button>
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-gray-900 mb-1">{tmpl.title}</h4>
-                    <p className="text-[10px] text-gray-400 font-medium truncate">{tmpl.pdfName}</p>
+                    <h4 className="text-[16px] font-black text-hannam-text mb-2 tracking-tight">{tmpl.title}</h4>
+                    <p className="text-[11px] text-hannam-muted font-medium truncate uppercase opacity-60">{tmpl.pdfName}</p>
+                    <div className="mt-6 flex items-center gap-2 text-[10px] font-black text-hannam-gold uppercase tracking-widest">
+                       기본 템플릿 <ChevronRight className="w-3 h-3" />
+                    </div>
                   </div>
                </div>
              ))}
@@ -142,21 +191,33 @@ export const ContractDashboard: React.FC = () => {
         )}
       </div>
 
+      {/* 템플릿 업로드 모달 */}
       {isTemplateModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-           <div className="bg-white w-full max-w-sm rounded-md p-8 shadow-2xl border border-gray-200">
-              <div className="flex justify-between items-center mb-6">
-                 <h2 className="text-sm font-bold text-gray-900 uppercase">템플릿 업로드</h2>
-                 <button onClick={() => setIsTemplateModalOpen(false)}><X className="w-5 h-5 text-gray-400" /></button>
+        <div className="fixed inset-0 bg-hannam-text/40 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+           <div className="bg-white w-full max-w-md rounded-[48px] p-12 shadow-hannam-deep border border-hannam-border animate-smooth-fade">
+              <div className="flex justify-between items-center mb-10">
+                 <h2 className="text-xl font-serif font-bold text-hannam-green tracking-tight uppercase">Upload Template</h2>
+                 <button onClick={() => setIsTemplateModalOpen(false)} className="text-hannam-muted hover:text-hannam-text transition-colors"><X className="w-7 h-7" /></button>
               </div>
-              <div className="space-y-6">
-                 <div>
-                    <label className="text-[10px] font-bold text-gray-400 uppercase mb-2 block">템플릿 명칭</label>
-                    <input type="text" value={newTemplateTitle} onChange={e => setNewTemplateTitle(e.target.value)} placeholder="명칭 입력" className="w-full p-3 bg-gray-50 border border-gray-200 rounded-md font-bold text-xs outline-none" />
+              <div className="space-y-8">
+                 <div className="space-y-2.5">
+                    <label className="text-[12px] font-black text-hannam-muted ml-1 uppercase tracking-widest">공식 템플릿 명칭</label>
+                    <input 
+                      type="text" 
+                      value={newTemplateTitle} 
+                      onChange={e => setNewTemplateTitle(e.target.value)} 
+                      placeholder="예: 멤버십 이용 동의서" 
+                      className="w-full p-4.5 bg-hannam-bg/50 border border-hannam-border rounded-2xl font-bold text-xs outline-none focus:bg-white focus:border-hannam-gold transition-all" 
+                    />
                  </div>
-                 <div className="p-8 border-2 border-dashed border-gray-100 rounded-md flex flex-col items-center gap-4">
+                 <div className="p-10 border-2 border-dashed border-hannam-border rounded-[32px] flex flex-col items-center gap-6 bg-hannam-bg/20">
                     <input type="file" ref={fileInputRef} onChange={handleTemplateUpload} accept=".pdf" className="hidden" />
-                    <button onClick={() => fileInputRef.current?.click()} disabled={!newTemplateTitle || isProcessing} className="w-full py-3.5 bg-gray-900 text-white rounded-md text-[11px] font-bold uppercase disabled:opacity-30">
+                    <p className="text-[11px] text-hannam-muted font-bold text-center leading-relaxed">디지털 계약용 PDF 문서를<br/>이곳에 업로드하세요.</p>
+                    <button 
+                      onClick={() => fileInputRef.current?.click()} 
+                      disabled={!newTemplateTitle || isProcessing} 
+                      className="w-full py-4.5 bg-black text-white rounded-2xl text-[12px] font-black uppercase tracking-widest shadow-xl disabled:opacity-30 active:scale-95 transition-all"
+                    >
                        {isProcessing ? '처리 중...' : 'PDF 파일 선택'}
                     </button>
                  </div>

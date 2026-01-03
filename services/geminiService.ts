@@ -3,17 +3,9 @@ import { GoogleGenAI } from "@google/genai";
 
 export const geminiService = {
   getRecommendation: async (goal: string, history: string[]): Promise<string> => {
-    // API 키를 함수 내부에서 직접 참조하여 초기화 시점의 레이스 컨디션 방지
-    const apiKey = process.env.API_KEY;
-    
-    if (!apiKey || apiKey === "undefined" || apiKey === "") {
-      console.warn("Gemini API Key is not configured. Returning default recommendation.");
-      return "고객님의 목표에 맞춘 최적화된 웰니스 프로그램을 제안해 드립니다.";
-    }
-
     try {
-      // 인스턴스를 매 호출마다 생성하여 최신 API 키 반영 보장
-      const ai = new GoogleGenAI({ apiKey });
+      // Use process.env.API_KEY directly as per the coding guidelines.
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const historyStr = history.length > 0 ? history.join(', ') : '최근 관리 내역 없음';
       
       const prompt = `당신은 프리미엄 웰니스 센터 '더 한남'의 전문 컨설턴트입니다. 
@@ -31,7 +23,7 @@ export const geminiService = {
         },
       });
 
-      // SDK 가이드에 따라 .text 프로퍼티 사용
+      // Correct Method: Use the .text property directly (do not use text()).
       return response.text?.trim() || "전담 전문가가 고객님만을 위한 맞춤형 테라피를 구상 중입니다.";
     } catch (error) {
       console.error('Gemini API Error:', error);

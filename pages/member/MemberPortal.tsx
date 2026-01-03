@@ -1,22 +1,24 @@
 
 import React, { useEffect, useState } from 'react';
 import { dbService } from '../../services/dbService';
-import { Member, CareRecord, Reservation, CareStatus } from '../../types';
+import { Member, CareRecord, Reservation, CareStatus, Notice, Notification } from '../../types';
 import { useNavigate } from 'react-router-dom';
-import { LayoutGrid, RefreshCw, Clock, Sparkles, AlertCircle, LogOut, ChevronRight, FileText, CheckCircle2, ArrowRight } from 'lucide-react';
+import { LayoutGrid, Clock, Sparkles, AlertCircle, LogOut, ChevronRight, Bell, X, CheckCircle2, ArrowRight, Megaphone, ImageIcon, Calendar } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { useLanguage } from '../../LanguageContext';
 
 export const MemberPortal: React.FC = () => {
   const { logout, user: currentUser } = useAuth();
   const { t, lang, setLang } = useLanguage();
+  const navigate = useNavigate();
+
   const [member, setMember] = useState<Member | null>(null);
   const [history, setHistory] = useState<CareRecord[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [pendingRecord, setPendingRecord] = useState<CareRecord | null>(null);
-  const [activeTab, setActiveTab] = useState<'home' | 'history' | 'notes'>('home');
-  
-  const navigate = useNavigate();
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotiPanel, setShowNotiPanel] = useState(false);
+  const [activePopup, setActivePopup] = useState<Notice | null>(null);
 
   useEffect(() => {
     if (!currentUser || currentUser.role !== 'MEMBER') { navigate('/'); return; }
@@ -25,149 +27,204 @@ export const MemberPortal: React.FC = () => {
 
   const loadMemberData = async () => {
     if (!currentUser) return;
-    const [m, h, r] = await Promise.all([
+    const [m, h, r, n, notis, confirmedIds] = await Promise.all([
       dbService.getMemberById(currentUser.id),
       dbService.getMemberCareHistory(currentUser.id),
-      dbService.getReservations(currentUser.id)
+      dbService.getReservations(currentUser.id),
+      dbService.getNotices(true),
+      dbService.getNotifications(currentUser.id),
+      dbService.getConfirmedNoticeIds(currentUser.id)
     ]);
+
     if (m) {
       setMember(m);
       setHistory(h);
       setReservations(r);
-      // REQUESTED 상태인 내역 중 가장 최신 것 하나만 알림으로 표시
-      const pending = h.find(rec => rec.status === CareStatus.REQUESTED);
-      setPendingRecord(pending || null);
+      setNotices(n);
+      setNotifications(notis);
+
+      const pendingPopup = n.find(notice => notice.isPopup && !confirmedIds.includes(notice.id));
+      if (pendingPopup) setActivePopup(pendingPopup);
     }
   };
 
-  if (!member) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-[0.3em]">Connecting...</div>;
+  const handleConfirmNotice = async (noticeId: string) => {
+    if (!member) return;
+    await dbService.confirmNotice(member.id, noticeId);
+    setActivePopup(null);
+  };
+
+  const handleReadNoti = async (notiId: string) => {
+    await dbService.markNotificationAsRead(notiId);
+    setNotifications(prev => prev.map(n => n.id === notiId ? { ...n, isRead: true } : n));
+  };
+
+  if (!member) return <div className="min-h-screen flex items-center justify-center font-serif text-hannam-gold uppercase tracking-[0.3em]">{t('portal.common.loading') || 'Connecting...'}</div>;
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const latestNotice = notices[0];
+  const pendingRecord = history.find(h => h.status === CareStatus.REQUESTED);
 
   return (
     <div className="min-h-screen bg-hannam-bg font-sans text-hannam-text pb-48 animate-smooth-fade">
-      <header className="px-8 py-6 flex justify-between items-center bg-white/60 backdrop-blur-2xl sticky top-0 z-[60] border-b border-[#F1EFEA]">
+      <header className="px-8 py-6 flex justify-between items-center bg-white/60 backdrop-blur-2xl sticky top-0 z-[150] border-b border-[#F1EFEA]">
         <div className="flex flex-col">
           <h1 className="text-xs font-serif font-bold tracking-widest text-hannam-green uppercase">{t('portal.title')}</h1>
-          <p className="text-[9px] text-hannam-gold font-bold uppercase tracking-widest mt-1">Concierge Portal</p>
+          <p className="text-[9px] text-hannam-gold font-bold uppercase tracking-widest mt-1">{t('portal.subtitle')}</p>
         </div>
-        <div className="flex items-center gap-6">
-           <div className="flex items-center bg-hannam-bg/50 px-3 py-1.5 rounded-full border border-hannam-border">
-              <button onClick={() => setLang('ko')} className={`text-[9px] font-bold px-2 ${lang === 'ko' ? 'text-hannam-green' : 'text-hannam-muted'}`}>KR</button>
-              <span className="text-[9px] text-hannam-border">|</span>
-              <button onClick={() => setLang('en')} className={`text-[9px] font-bold px-2 ${lang === 'en' ? 'text-hannam-green' : 'text-hannam-muted'}`}>EN</button>
+        <div className="flex items-center gap-4">
+           <button onClick={() => setShowNotiPanel(true)} className="relative p-2 text-hannam-muted hover:text-hannam-green transition-all">
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />}
+           </button>
+           <div className="flex items-center bg-hannam-bg/80 px-4 py-2 rounded-full border border-hannam-border shadow-sm">
+              <button onClick={() => setLang('ko')} className={`text-[10px] font-black px-2 ${lang === 'ko' ? 'text-hannam-green' : 'text-hannam-muted'}`}>KR</button>
+              <span className="text-[10px] text-hannam-border opacity-30">|</span>
+              <button onClick={() => setLang('en')} className={`text-[10px] font-black px-2 ${lang === 'en' ? 'text-hannam-green' : 'text-hannam-muted'}`}>EN</button>
            </div>
-           <button onClick={() => confirm(t('portal.common.logout')) && logout()} className="p-2 text-hannam-muted hover:text-red-500"><LogOut className="w-4 h-4" /></button>
+           <button onClick={() => confirm(t('portal.common.logout')) && logout()} className="p-2 text-hannam-muted hover:text-red-500 transition-colors"><LogOut className="w-4 h-4" /></button>
         </div>
       </header>
 
-      <main className="px-6 py-10 space-y-12 max-w-lg mx-auto">
+      <main className="px-6 py-10 space-y-10 max-w-lg mx-auto">
         
-        {/* 잔액 요약 섹션 */}
+        {/* 인사 섹션 */}
+        <div className="px-2">
+           <h2 className="text-2xl font-serif font-bold text-hannam-green">{t('portal.home.welcome')} {member.name}</h2>
+           <p className="text-[11px] font-bold text-hannam-gold uppercase tracking-widest mt-1">{t('portal.home.tier')}: {member.tier}</p>
+        </div>
+
+        {/* 잔액 현황 카드 */}
         <section className="bg-hannam-green rounded-[40px] p-10 text-white shadow-hannam-deep relative overflow-hidden">
            <div className="relative z-10">
-              <p className="text-[10px] font-bold text-white/40 mb-3 tracking-widest uppercase">{member.name} — Remaining Credit</p>
+              <p className="text-[10px] font-bold text-white/40 mb-3 tracking-widest uppercase">{t('portal.home.remaining')}</p>
               <h3 className="text-4xl font-serif font-medium tracking-tight mb-8"><span className="text-xl mr-2 text-hannam-gold">₩</span><span className="num-data">{member.remaining.toLocaleString()}</span></h3>
-              <div className="grid grid-cols-2 gap-8 pt-6 border-t border-white/10">
-                 <div><p className="text-[9px] text-white/30 uppercase font-black mb-1">Total Usage</p><p className="text-xs font-bold num-data">₩{member.used.toLocaleString()}</p></div>
-                 <div className="text-right"><p className="text-[9px] text-white/30 uppercase font-black mb-1">Tier</p><p className="text-[10px] font-black text-hannam-gold uppercase">{member.tier}</p></div>
+              <div className="grid grid-cols-2 gap-8 pt-8 border-t border-white/10">
+                 <div><p className="text-[9px] text-white/30 uppercase font-black mb-1.5">{t('portal.home.totalUsage')}</p><p className="text-sm font-bold num-data">₩{member.used.toLocaleString()}</p></div>
+                 <div className="text-right"><p className="text-[9px] text-white/30 uppercase font-black mb-1.5">{t('portal.home.expiry')}</p><p className="text-[11px] font-black text-hannam-gold num-data">{member.expiryDate || 'N/A'}</p></div>
               </div>
            </div>
+           <LayoutGrid className="absolute -right-10 -bottom-10 w-48 h-48 text-white opacity-[0.03] pointer-events-none" />
         </section>
 
-        {/* 1. 세션 확인 알림 (트리거) */}
+        {/* 차감 대기 승인 카드 */}
         {pendingRecord && (
           <section 
             onClick={() => navigate(`/contract/${pendingRecord.id}`)}
-            className="bg-white rounded-[32px] shadow-xl border-2 border-hannam-gold/20 p-8 space-y-6 animate-smooth-fade cursor-pointer hover:border-hannam-gold group transition-all"
+            className="bg-white rounded-[32px] shadow-hannam-deep border-2 border-hannam-gold/30 p-8 space-y-6 animate-smooth-fade cursor-pointer group hover:bg-hannam-bg/10 transition-all"
           >
             <div className="flex justify-between items-start">
-              <div className="space-y-1">
-                <h2 className="text-lg font-bold text-hannam-text">웰니스 케어 내역 처리됨</h2>
-                <p className="text-[10px] font-bold text-hannam-gold uppercase tracking-widest">결제 차감 완료 및 케어 리포트 도착</p>
+              <div className="space-y-1.5">
+                <h2 className="text-lg font-bold text-hannam-text">{t('portal.home.pendingTitle')}</h2>
+                <p className="text-[10px] font-black text-hannam-gold uppercase tracking-widest">{t('portal.home.pendingSubtitle')}</p>
               </div>
-              <div className="w-10 h-10 bg-hannam-bg rounded-xl flex items-center justify-center text-hannam-gold">
-                <AlertCircle className="w-5 h-5" />
+              <div className="w-12 h-12 bg-hannam-bg rounded-2xl flex items-center justify-center text-hannam-gold shadow-inner">
+                <AlertCircle className="w-6 h-6" />
               </div>
             </div>
-            <div className="bg-[#FBF9F6] rounded-2xl p-5">
-              <div className="flex justify-between items-center text-xs font-bold mb-3"><span className="text-gray-400">항목</span><span>{pendingRecord.content}</span></div>
-              <div className="flex justify-between items-center pt-3 border-t border-gray-100"><span className="text-gray-400">차감액</span><span className="num-data text-red-500">- ₩{pendingRecord.discountedPrice.toLocaleString()}</span></div>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-[11px] font-black text-hannam-green uppercase tracking-widest pt-2">
-               리포트 확인 및 디지털 서명하기 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <div className="flex items-center justify-center gap-2 text-[11px] font-black text-hannam-green uppercase tracking-widest pt-4 border-t border-hannam-border/30">
+               {t('portal.home.authorize')} <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
             </div>
           </section>
         )}
 
-        {/* 2. 웰니스 케어 노트 인사이트 */}
+        {/* 예정된 세션 */}
         <section className="space-y-6">
-           <div className="flex items-center gap-3 px-4">
-              <Sparkles className="w-5 h-5 text-hannam-gold" />
-              <h3 className="text-sm font-serif font-black text-hannam-green uppercase tracking-widest">Wellness Care Notes</h3>
+           <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-3">
+                 <Calendar className="w-4.5 h-4.5 text-hannam-muted" />
+                 <h3 className="text-[11px] font-black text-hannam-muted uppercase tracking-widest">{t('portal.home.upcoming')}</h3>
+              </div>
+              <span className="text-[10px] font-black text-hannam-gold num-data">{reservations.length}</span>
            </div>
-           
-           {history.filter(h => h.status === CareStatus.SIGNED).length > 0 ? (
-             history.filter(h => h.status === CareStatus.SIGNED).slice(0, 2).map(item => (
-               <div 
-                 key={item.id} 
-                 onClick={() => navigate(`/contract/${item.id}`)}
-                 className="bg-white rounded-[32px] p-8 border border-[#F1EFEA] shadow-hannam-soft space-y-6 relative overflow-hidden cursor-pointer hover:shadow-hannam-deep transition-all group"
-               >
-                  <div className="flex justify-between items-start">
-                     <div>
-                        <p className="text-[9px] font-black text-gray-300 uppercase mb-1">{item.date} Service Recap</p>
-                        <h4 className="text-sm font-black text-hannam-text group-hover:text-hannam-green transition-colors">{item.content}</h4>
-                     </div>
-                     <CheckCircle2 className="w-4 h-4 text-green-500" />
-                  </div>
-                  <div className="bg-[#FBF9F6] p-6 rounded-2xl italic">
-                     <p className="text-xs text-hannam-text leading-relaxed font-medium line-clamp-2">"{item.feedback || '전담 전문가의 코멘트를 준비 중입니다.'}"</p>
-                  </div>
-                  <div className="flex items-center justify-between pt-2">
-                     <span className="text-[9px] font-black text-hannam-gold uppercase tracking-widest">View Detailed Insight</span>
-                     <ChevronRight className="w-3.5 h-3.5 text-gray-200 group-hover:text-hannam-gold transition-colors" />
-                  </div>
-               </div>
-             ))
+           {reservations.length > 0 ? (
+             <div className="space-y-3">
+                {reservations.slice(0, 2).map(res => (
+                   <div key={res.id} className="bg-white p-6 rounded-[28px] border border-[#F1EFEA] flex justify-between items-center group hover:border-hannam-gold transition-all">
+                      <div className="flex items-center gap-5">
+                         <div className="w-11 h-11 bg-hannam-bg rounded-xl flex items-center justify-center text-hannam-green font-serif font-black">{res.memberName[0]}</div>
+                         <div>
+                            <p className="text-[13px] font-black text-hannam-text">{res.serviceType}</p>
+                            <p className="text-[10px] font-bold text-hannam-muted mt-0.5">{res.dateTime.replace('T', ' ')}</p>
+                         </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-200" />
+                   </div>
+                ))}
+             </div>
            ) : (
-             <div className="py-20 text-center bg-white rounded-[32px] border border-dashed border-hannam-border">
-                <p className="text-gray-300 text-[10px] font-black uppercase tracking-widest">아직 기록된 케어 노트가 없습니다</p>
+             <div className="py-12 text-center bg-white/40 rounded-[28px] border border-dashed border-hannam-border">
+                <p className="text-gray-300 text-[10px] font-black uppercase tracking-widest">{t('portal.home.noSchedule')}</p>
              </div>
            )}
         </section>
 
-        {/* 3. 예정된 일정 */}
+        {/* 웰니스 인사이트 피드 */}
         <section className="space-y-6">
-           <div className="flex items-center gap-3 px-4">
-              <Clock className="w-5 h-5 text-hannam-gold" />
-              <h3 className="text-sm font-serif font-black text-hannam-green uppercase tracking-widest">Upcoming Sessions</h3>
+           <div className="flex items-center gap-3 px-2">
+              <Sparkles className="w-4.5 h-4.5 text-hannam-gold" />
+              <h3 className="text-[11px] font-black text-hannam-muted uppercase tracking-widest">{t('portal.insights.title')}</h3>
            </div>
-           {reservations.filter(r => r.status === 'booked').map(res => (
-              <div key={res.id} className="bg-white p-6 rounded-[28px] border border-[#F1EFEA] flex justify-between items-center group shadow-hannam-soft">
-                 <div className="flex gap-6 items-center">
-                    <div className="w-12 h-12 bg-hannam-bg rounded-2xl flex flex-col items-center justify-center font-bold">
-                       <span className="text-[8px] text-hannam-gold uppercase">{new Date(res.dateTime).toLocaleString('en', {month:'short'})}</span>
-                       <span className="text-lg text-hannam-green num-data">{new Date(res.dateTime).getDate()}</span>
-                    </div>
-                    <div><p className="text-sm font-black text-hannam-text">{res.serviceType}</p><p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{new Date(res.dateTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} • {res.therapistName}</p></div>
-                 </div>
-                 <ChevronRight className="w-4 h-4 text-gray-200" />
-              </div>
-           ))}
+           {history.filter(h => h.status === CareStatus.SIGNED).length > 0 ? (
+             history.filter(h => h.status === CareStatus.SIGNED).slice(0, 3).map(item => (
+               <div key={item.id} onClick={() => navigate(`/contract/${item.id}`)} className="bg-white rounded-[32px] p-8 border border-[#F1EFEA] shadow-hannam-soft space-y-5 cursor-pointer hover:shadow-hannam-deep transition-all group">
+                  <div className="flex justify-between items-start">
+                     <div>
+                        <p className="text-[9px] font-black text-gray-300 uppercase mb-1.5 num-data">{item.date}</p>
+                        <h4 className="text-[15px] font-black text-hannam-text group-hover:text-hannam-green transition-colors">{item.content}</h4>
+                     </div>
+                     <div className="w-8 h-8 bg-green-50 rounded-full flex items-center justify-center text-green-500">
+                        <CheckCircle2 className="w-4.5 h-4.5" />
+                     </div>
+                  </div>
+                  <p className="text-[12px] text-gray-500 leading-relaxed font-medium line-clamp-2 italic opacity-80 group-hover:opacity-100">"{item.feedback || t('portal.insights.noData')}"</p>
+               </div>
+             ))
+           ) : (
+             <div className="py-20 text-center bg-white/40 rounded-[32px] border border-dashed border-hannam-border">
+                <p className="text-gray-300 text-[10px] font-black uppercase tracking-widest">{t('portal.insights.noData')}</p>
+             </div>
+           )}
         </section>
-
       </main>
 
-      <nav className="fixed bottom-10 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-hannam-green/95 backdrop-blur-3xl text-white px-10 py-6 rounded-[32px] shadow-2xl flex justify-between items-center z-[100]">
-         <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center gap-2 ${activeTab === 'home' ? 'text-hannam-gold' : 'text-white/30'}`}>
-            <LayoutGrid className="w-5 h-5" /><span className="text-[8px] font-black uppercase tracking-widest">Portal</span>
-         </button>
-         <button onClick={() => setActiveTab('history')} className={`flex flex-col items-center gap-2 ${activeTab === 'history' ? 'text-hannam-gold' : 'text-white/30'}`}>
-            <Clock className="w-5 h-5" /><span className="text-[8px] font-black uppercase tracking-widest">Ledger</span>
-         </button>
-         <button onClick={() => setActiveTab('notes')} className={`flex flex-col items-center gap-2 ${activeTab === 'notes' ? 'text-hannam-gold' : 'text-white/30'}`}>
-            <Sparkles className="w-5 h-5" /><span className="text-[8px] font-black uppercase tracking-widest">Insights</span>
-         </button>
-      </nav>
+      {/* 알림 센터 패널 */}
+      {showNotiPanel && (
+        <div className="fixed inset-0 z-[200] flex justify-end">
+           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowNotiPanel(false)} />
+           <div className="relative w-full max-w-[380px] bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-500">
+              <div className="p-10 border-b border-[#F1EFEA] flex justify-between items-center bg-white sticky top-0">
+                 <div>
+                    <h2 className="text-lg font-serif font-bold text-hannam-green">{t('portal.home.welcome')}</h2>
+                    <p className="text-[9px] font-black text-hannam-gold uppercase tracking-widest mt-1">Notification Center</p>
+                 </div>
+                 <button onClick={() => setShowNotiPanel(false)} className="p-2 text-hannam-muted hover:text-black transition-colors"><X className="w-7 h-7" /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto no-scrollbar p-8 space-y-4 bg-hannam-bg/20">
+                 {notifications.map(noti => (
+                    <div 
+                      key={noti.id} 
+                      onClick={() => !noti.isRead && handleReadNoti(noti.id)}
+                      className={`p-7 rounded-[32px] border transition-all cursor-pointer ${noti.isRead ? 'bg-hannam-bg/40 border-hannam-border' : 'bg-white border-hannam-gold/20 shadow-hannam-soft'}`}
+                    >
+                       <div className="flex justify-between items-start mb-4">
+                          <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-lg ${noti.isRead ? 'text-gray-300 border border-gray-100' : 'text-hannam-gold bg-hannam-bg border border-hannam-gold/20'}`}>{noti.type.replace('_', ' ')}</span>
+                          <span className="text-[9px] font-bold text-gray-300 num-data">{noti.createdAt.split('T')[0]}</span>
+                       </div>
+                       <h4 className={`text-[13px] font-black mb-2 ${noti.isRead ? 'text-gray-400' : 'text-hannam-text'}`}>{noti.title}</h4>
+                       <p className={`text-[12px] leading-relaxed font-medium ${noti.isRead ? 'text-gray-300' : 'text-gray-500'}`}>{noti.message}</p>
+                    </div>
+                 ))}
+                 {notifications.length === 0 && (
+                   <div className="py-40 text-center">
+                      <Bell className="w-12 h-12 text-hannam-border mx-auto mb-6 opacity-30" />
+                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{t('portal.history.noData') || 'No notifications yet'}</p>
+                   </div>
+                 )}
+              </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -6,16 +6,15 @@ export enum UserRole {
   MEMBER = 'MEMBER',
 }
 
-// Added PermissionScope for authorization logic
 export enum PermissionScope {
   DASHBOARD_VIEW = 'DASHBOARD_VIEW',
   MEMBER_MANAGE = 'MEMBER_MANAGE',
   CARE_MANAGE = 'CARE_MANAGE',
   CONTRACT_MANAGE = 'CONTRACT_MANAGE',
   INQUIRY_MANAGE = 'INQUIRY_MANAGE',
+  NOTICE_MANAGE = 'NOTICE_MANAGE',
 }
 
-// Added ROLE_SCOPES mapping
 export const ROLE_SCOPES: Record<UserRole, PermissionScope[]> = {
   [UserRole.SUPER_ADMIN]: Object.values(PermissionScope),
   [UserRole.ADMIN]: [
@@ -24,6 +23,7 @@ export const ROLE_SCOPES: Record<UserRole, PermissionScope[]> = {
     PermissionScope.CARE_MANAGE,
     PermissionScope.CONTRACT_MANAGE,
     PermissionScope.INQUIRY_MANAGE,
+    PermissionScope.NOTICE_MANAGE,
   ],
   [UserRole.STAFF]: [
     PermissionScope.DASHBOARD_VIEW,
@@ -41,10 +41,10 @@ export interface User {
 }
 
 export enum CareStatus {
-  REQUESTED = 'REQUESTED', // 차감 완료, 서명 요청됨
-  SIGNED = 'SIGNED',       // 서명 완료
-  EXPIRED = 'EXPIRED',     // 서명 미진행 (차감은 유지)
-  CANCELLED = 'CANCELLED', // 결제 취소 및 환불됨
+  REQUESTED = 'REQUESTED',
+  SIGNED = 'SIGNED',
+  EXPIRED = 'EXPIRED',
+  CANCELLED = 'CANCELLED',
 }
 
 export interface CareRecord {
@@ -63,8 +63,8 @@ export interface CareRecord {
   status: CareStatus;
   signature?: string;
   signedAt?: string;
-  resendCount: number;      // 서명 재요청 횟수
-  requestedAt: string;     // 최초/최근 요청 시각
+  resendCount: number;
+  requestedAt: string;
   createdAt: string;
 }
 
@@ -91,6 +91,7 @@ export interface Member {
   joinedAt: string;
   expiryDate?: string; 
   adminNote?: string;
+  status: 'active' | 'deleted';
 }
 
 export interface Reservation {
@@ -111,7 +112,7 @@ export interface Contract {
   memberName: string;
   memberEmail: string;
   memberPhone: string;
-  memberJoinedAt: string; // Added missing field
+  memberJoinedAt: string;
   type: 'MEMBERSHIP' | 'WAIVER' | 'PT_AGREEMENT';
   typeName: string;
   amount: number;
@@ -119,9 +120,9 @@ export interface Contract {
   signature?: string;
   yearMonth: string;
   createdAt: string;
+  pdfContent?: string;
 }
 
-// Added missing ContractTemplate interface
 export interface ContractTemplate {
   id: string;
   title: string;
@@ -132,7 +133,16 @@ export interface ContractTemplate {
   createdAt: string;
 }
 
-// Added missing Therapist interface
+export interface Program {
+  id: string;
+  name: string;
+  description: string;
+  basePrice: number;
+  unit: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
 export interface Therapist {
   id: string;
   name: string;
@@ -140,14 +150,6 @@ export interface Therapist {
   phone: string;
 }
 
-// Added missing Product interface
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-}
-
-// Added Inquiry related types
 export enum InquiryStatus {
   UNREGISTERED = 'UNREGISTERED',
   IN_PROGRESS = 'IN_PROGRESS',
@@ -176,5 +178,62 @@ export interface Inquiry {
   assignedStaff: string;
   yearMonth: string;
   logs: InquiryLog[];
+  createdAt: string;
+}
+
+export interface Notice {
+  id: string;
+  companyName: string;
+  title: string;
+  content: string;
+  imageUrl?: string;
+  isPopup: boolean;
+  isActive: boolean;
+  publishedAt: string;
+  createdAt: string;
+}
+
+export enum NotificationType {
+  CARE_DEDUCTION = 'CARE_DEDUCTION',
+  SIGN_REQUEST = 'SIGN_REQUEST',
+  CONTRACT_CONFIRM = 'CONTRACT_CONFIRM',
+  GENERAL = 'GENERAL'
+}
+
+export interface Notification {
+  id: string;
+  memberId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  relatedEntityId?: string;
+  isRead: boolean;
+  createdAt: string;
+  sentAt: string;
+}
+
+export interface MemberNoticeStatus {
+  memberId: string;
+  noticeId: string;
+  confirmedAt: string;
+}
+
+// --- 백업 및 보안 로그 추가 ---
+export interface BackupEntry {
+  id: string;
+  filename: string;
+  adminName: string;
+  adminEmail: string;
+  fileSize: string;
+  createdAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  action: string; // 'DOWNLOAD', 'DELETE_MEMBER', 'BACKUP'
+  target: string;
+  adminName: string;
+  details: string;
+  ipAddress?: string;
   createdAt: string;
 }

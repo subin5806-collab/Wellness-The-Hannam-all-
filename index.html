@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WELLNESS, THE HANNAM</title>
+    <title>Wellness, The Hannam</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script>
@@ -12,11 +12,11 @@
         theme: {
           extend: {
             colors: {
-              'hannam-bg': '#FBF9F6', // Warm Ivory (눈이 편안한 배경)
+              'hannam-bg': '#FBF9F6', 
               'hannam-green': '#1A362E',
               'hannam-gold': '#B89C7A',
               'hannam-border': '#EAE7E2',
-              'hannam-text': '#2D2D2D', // Charcoal
+              'hannam-text': '#2D2D2D', 
               'hannam-muted': '#8E8E8E',
               'hannam-card': '#FFFFFF',
             },
@@ -28,8 +28,8 @@
               'hannam': '24px',
             },
             boxShadow: {
-              'hannam-soft': '0 4px 24px rgba(0, 0, 0, 0.02)', // 더 부드러운 그림자
-              'hannam-deep': '0 12px 48px rgba(0, 0, 0, 0.04)',
+              'hannam-soft': '0 2px 12px rgba(0, 0, 0, 0.03)',
+              'hannam-deep': '0 10px 40px rgba(0, 0, 0, 0.05)',
             }
           }
         }
@@ -45,48 +45,37 @@
       }
       .font-serif { font-family: 'Cormorant Garamond', serif; }
       
-      /* 숫자 스타일: 고정폭과 가독성 강조 */
       .num-data {
         font-family: 'Inter', sans-serif;
         font-variant-numeric: tabular-nums;
-        font-weight: 500;
+        font-weight: 600;
         letter-spacing: -0.03em;
       }
       
-      /* 장식 제거 및 여백 강조 */
       .card-premium {
         background: #FFFFFF;
-        border: 1px solid #F1EFEA;
-        border-radius: 28px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-        transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      
-      .card-premium:hover {
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
-        transform: translateY(-1px);
+        border: 1px solid #EAE7E2;
+        border-radius: 20px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
       }
       
       .btn-hannam-primary {
         background-color: #1A362E;
         color: #FFFFFF;
-        border-radius: 18px;
+        border-radius: 12px;
         font-weight: 600;
-        transition: all 0.4s;
-      }
-      .btn-hannam-primary:hover { 
-        background-color: #000000;
+        transition: all 0.3s ease;
       }
       
       .no-scrollbar::-webkit-scrollbar { display: none; }
       .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-      /* 애니메이션 최적화 */
       .animate-smooth-fade {
-        animation: smoothFade 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: smoothFade 0.6s cubic-bezier(0.16, 1, 0.3, 1);
       }
       @keyframes smoothFade {
-        from { opacity: 0; transform: translateY(10px); }
+        from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
       }
     </style>

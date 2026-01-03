@@ -126,7 +126,7 @@ export const AdminInquiries: React.FC = () => {
                      return <option key={ym} value={ym}>{ym}</option>;
                    })}
                 </select>
-                <button onClick={() => dbService.exportInquiriesByMonth(exportMonth)} className="text-hannam-gold hover:text-black transition-colors">
+                <button onClick={() => dbService.exportInquiriesByMonth(exportMonth, currentUser?.name || 'Staff')} className="text-hannam-gold hover:text-black transition-colors">
                    <Download className="w-4 h-4" />
                 </button>
              </div>
