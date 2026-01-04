@@ -5,7 +5,8 @@ export const ADMIN_UI = {
     reservations: "예약 관리",
     members: "회원 관리",
     contracts: "계약 관리",
-    inquiries: "상담 관리"
+    inquiries: "상담 관리",
+    notice: "공지 관리"
   },
   dashboard: {
     title: "운영 대시보드",
@@ -27,10 +28,10 @@ export const ADMIN_UI = {
     }
   },
   members: {
-    title: "회원 명부",
+    title: "회원 관리",
     subtitle: "프라이빗 클라이언트 아카이브",
     actions: {
-      csv: "CSV 내보내기",
+      csv: "CSV 추출",
       backup: "전체 백업",
       bulk: "일괄 등록",
       register: "신규 회원 등록"

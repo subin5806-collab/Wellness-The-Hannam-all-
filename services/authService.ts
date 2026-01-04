@@ -1,5 +1,6 @@
 
 import { User, UserRole, PermissionScope, ROLE_SCOPES, Member } from '../types';
+import { dbService } from './dbService';
 
 let currentUser: User | null = null;
 
@@ -7,14 +8,20 @@ export const authService = {
   adminLogin: async (email: string, password: string): Promise<User> => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     
+    // 초기 관리자 계정 해싱 보장
+    await dbService.ensureHashedAdmin();
+
     const adminConfigsRaw = localStorage.getItem('firestore_admin_config');
     const adminConfigs = adminConfigsRaw ? JSON.parse(adminConfigsRaw) : [];
     const customAdmin = adminConfigs.find((c: any) => c.email === email);
 
-    const validPassword = customAdmin ? customAdmin.password : 'lucete800134';
-    const validEmail = 'help@thehannam.com';
+    if (!customAdmin) {
+      throw new Error('관리자 이메일 또는 비밀번호가 일치하지 않습니다.');
+    }
 
-    if (email === validEmail && password === validPassword) {
+    const isMatch = await dbService.verifyPassword(password, customAdmin.password);
+
+    if (isMatch) {
       const mockUser: User = {
         id: 'admin-hannam',
         name: 'Hannam Admin',
@@ -36,9 +43,15 @@ export const authService = {
     const membersRaw = localStorage.getItem('firestore_members');
     const members: Member[] = membersRaw ? JSON.parse(membersRaw) : [];
     
-    const member = members.find(m => m.id === cleanId && m.password === password);
+    const member = members.find(m => m.id === cleanId && m.status !== 'deleted');
     
-    if (!member) {
+    if (!member || !member.password) {
+      throw new Error('핸드폰 번호 또는 비밀번호가 일치하지 않습니다.');
+    }
+
+    const isMatch = await dbService.verifyPassword(password, member.password);
+
+    if (!isMatch) {
       throw new Error('핸드폰 번호 또는 비밀번호가 일치하지 않습니다.');
     }
 

@@ -148,6 +148,8 @@ export interface Therapist {
   name: string;
   specialty: string;
   phone: string;
+  status: 'active' | 'inactive';
+  note?: string;
 }
 
 export enum InquiryStatus {

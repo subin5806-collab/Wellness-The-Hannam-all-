@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { dbService } from '../../services/dbService';
 import { useNavigate } from 'react-router-dom';
 import { ContractTemplate, Member, Contract, Program } from '../../types';
-import { FileText, CheckCircle2, Search, DollarSign, ShieldCheck, Mail, ArrowLeft, ChevronRight } from 'lucide-react';
+import { FileText, CheckCircle2, Search, DollarSign, ShieldCheck, Mail, ArrowLeft, ChevronRight, TrendingUp } from 'lucide-react';
 import { SignaturePad } from '../../components/SignaturePad';
 import { useAuth } from '../../AuthContext';
 
@@ -19,6 +19,7 @@ export const ContractCreator: React.FC = () => {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [finalContract, setFinalContract] = useState<Contract | null>(null);
+  const [updatedMember, setUpdatedMember] = useState<Member | null>(null);
   const [selectedProgram, setSelectedProgram] = useState<Program | null>(null);
 
   const [searchNo, setSearchNo] = useState('');
@@ -41,7 +42,7 @@ export const ContractCreator: React.FC = () => {
   const [checkList, setCheckList] = useState({
     confirmed: false,
     termsRead: false,
-    legalBinding: false
+    balanceUpdateAgreement: false
   });
 
   useEffect(() => {
@@ -91,9 +92,10 @@ export const ContractCreator: React.FC = () => {
         ...formData,
         type: 'MEMBERSHIP',
         adminName: user?.name,
-        pdfContent: `본 계약은 더 한남과(와) ${formData.memberName} 회원 간의 멤버십 계약으로, ₩${formData.amount.toLocaleString()}의 크레딧 충전을 포함합니다.`
+        pdfContent: `본 계약은 더 한남과(와) ${formData.memberName} 회원 간의 멤버십 계약으로, ₩${formData.amount.toLocaleString()}의 크레딧 충전 및 멤버십 자격 부여를 포함합니다.`
       });
       setFinalContract(result.contract);
+      setUpdatedMember(result.updatedMember);
       setStep(4);
     } catch (e: any) {
       alert(e.message);
@@ -106,11 +108,11 @@ export const ContractCreator: React.FC = () => {
     <div className="min-h-screen bg-hannam-bg font-sans flex flex-col animate-smooth-fade">
       <header className="bg-white px-10 py-6 border-b border-hannam-border flex justify-between items-center sticky top-0 z-50 shadow-sm">
          <div>
-           <h1 className="text-xl font-serif font-bold text-hannam-green tracking-tight uppercase">Initiate Agreement</h1>
-           <p className="text-[10px] font-black text-hannam-gold uppercase tracking-[0.2em] mt-1">단계 {step} / 4 — 전자 계약 구성 진행 중</p>
+           <h1 className="text-xl font-serif font-bold text-hannam-green tracking-tight uppercase">Membership Initiation</h1>
+           <p className="text-[10px] font-black text-hannam-gold uppercase tracking-[0.2em] mt-1">단계 {step} / 4 — 멤버십 갱신 및 잔액 충전 flow</p>
          </div>
          <button onClick={() => navigate('/admin/contracts')} className="text-[12px] font-bold text-hannam-muted hover:text-red-500 transition-colors flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4" /> 작성 취소 및 나가기
+            <ArrowLeft className="w-4 h-4" /> 작성 취소
          </button>
       </header>
 
@@ -118,8 +120,8 @@ export const ContractCreator: React.FC = () => {
         {step === 1 && (
           <div className="w-full max-w-2xl space-y-12">
              <div className="flex bg-white p-1.5 rounded-[24px] border border-hannam-border shadow-hannam-soft">
-                <button onClick={() => setMode('SEARCH')} className={`flex-1 py-4.5 rounded-[20px] text-[12px] font-bold transition-all ${mode === 'SEARCH' ? 'bg-hannam-bg text-hannam-green shadow-inner' : 'text-hannam-muted hover:text-hannam-text'}`}>회원 정보 검색</button>
-                <button onClick={() => setMode('MANUAL')} className={`flex-1 py-4.5 rounded-[20px] text-[12px] font-bold transition-all ${mode === 'MANUAL' ? 'bg-hannam-bg text-hannam-green shadow-inner' : 'text-hannam-muted hover:text-hannam-text'}`}>직접 정보 입력</button>
+                <button onClick={() => setMode('SEARCH')} className={`flex-1 py-4.5 rounded-[20px] text-[12px] font-bold transition-all ${mode === 'SEARCH' ? 'bg-hannam-bg text-hannam-green shadow-inner' : 'text-hannam-muted hover:text-hannam-text'}`}>회원 검색</button>
+                <button onClick={() => setMode('MANUAL')} className={`flex-1 py-4.5 rounded-[20px] text-[12px] font-bold transition-all ${mode === 'MANUAL' ? 'bg-hannam-bg text-hannam-green shadow-inner' : 'text-hannam-muted hover:text-hannam-text'}`}>정보 직접 입력</button>
              </div>
 
              {mode === 'SEARCH' && (
@@ -145,7 +147,7 @@ export const ContractCreator: React.FC = () => {
                             <div className="w-10 h-10 bg-hannam-bg rounded-full flex items-center justify-center text-hannam-green font-serif font-black">{m.name[0]}</div>
                             <div>
                               <p className="text-[14px] font-black text-hannam-text">{m.name} 님</p>
-                              <p className="text-[11px] text-hannam-muted font-bold num-data">{m.phone}</p>
+                              <p className="text-[11px] text-hannam-muted font-bold num-data">현재 잔액: ₩ {m.remaining.toLocaleString()}</p>
                             </div>
                           </div>
                           <ChevronRight className="w-5 h-5 text-hannam-border" />
@@ -158,14 +160,14 @@ export const ContractCreator: React.FC = () => {
                     <div className="bg-white p-12 rounded-[48px] border border-hannam-gold/40 shadow-hannam-deep animate-in zoom-in-95 duration-400">
                        <div className="flex justify-between items-start mb-10">
                           <div>
-                             <p className="text-[10px] font-black text-hannam-gold uppercase tracking-[0.3em] mb-1">Target Client</p>
+                             <p className="text-[10px] font-black text-hannam-gold uppercase tracking-[0.3em] mb-1">Target Client Profile</p>
                              <h3 className="text-2xl font-serif font-bold text-hannam-text">{memberFound.name} 님</h3>
                           </div>
                           <ShieldCheck className="w-8 h-8 text-hannam-green opacity-20" />
                        </div>
                        <div className="grid grid-cols-2 gap-10 py-8 border-y border-hannam-border">
-                          <div><p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">연락처</p><p className="text-[14px] font-bold text-hannam-text num-data">{memberFound.phone}</p></div>
-                          <div><p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">이메일</p><p className="text-[14px] font-bold text-hannam-text">{memberFound.email}</p></div>
+                          <div><p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">현재 멤버십 등급</p><p className="text-[14px] font-black text-hannam-gold uppercase">{memberFound.tier}</p></div>
+                          <div><p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">보유 크레딧</p><p className="text-[14px] font-bold text-hannam-text num-data">₩ {memberFound.remaining.toLocaleString()}</p></div>
                        </div>
                        <button onClick={() => setStep(2)} className="w-full py-6 bg-hannam-green text-white rounded-[24px] text-[13px] font-black uppercase tracking-widest mt-10 shadow-hannam-deep hover:bg-black active:scale-95 transition-all">다음 단계로 이동</button>
                     </div>
@@ -179,7 +181,7 @@ export const ContractCreator: React.FC = () => {
           <div className="w-full max-w-2xl space-y-10">
              <div className="bg-white p-12 rounded-[48px] border border-hannam-border shadow-hannam-deep space-y-10">
                 <div className="space-y-3">
-                   <label className="text-[12px] font-black text-hannam-muted uppercase tracking-widest ml-1">멤버십 프로그램 선택</label>
+                   <label className="text-[12px] font-black text-hannam-muted uppercase tracking-widest ml-1">갱신/구매할 멤버십 프로그램 선택</label>
                    <select 
                      onChange={(e) => handleProgramSelect(e.target.value)}
                      className="w-full p-5 bg-hannam-bg/50 border border-hannam-border rounded-[24px] font-bold text-[14px] outline-none focus:bg-white focus:border-hannam-gold transition-all"
@@ -189,7 +191,7 @@ export const ContractCreator: React.FC = () => {
                    </select>
                 </div>
                 <div className="space-y-3">
-                   <label className="text-[12px] font-black text-hannam-muted uppercase tracking-widest ml-1">최종 계약 금액 (₩)</label>
+                   <label className="text-[12px] font-black text-hannam-muted uppercase tracking-widest ml-1">최종 계약 및 충전 금액 (₩)</label>
                    <div className="relative">
                       <DollarSign className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-hannam-gold" />
                       <input 
@@ -199,7 +201,11 @@ export const ContractCreator: React.FC = () => {
                         className="w-full pl-16 pr-8 py-7 bg-hannam-bg/80 border border-hannam-border rounded-[32px] font-black text-3xl outline-none num-data focus:bg-white focus:border-hannam-gold transition-all" 
                       />
                    </div>
-                   <p className="text-[11px] text-hannam-gold font-bold mt-4 ml-2">* 계약 체결 시 해당 금액이 즉시 회원 잔액으로 합산됩니다.</p>
+                   <div className="mt-6 p-6 bg-hannam-bg/30 rounded-2xl border border-hannam-border border-dashed">
+                      <p className="text-[11px] text-hannam-gold font-bold leading-relaxed">
+                        * 안내: 본 계약 체결 시 선택한 금액 ₩{formData.amount.toLocaleString()}은 즉시 회원의 잔액으로 충전되며, 누적 예치액에 따라 멤버십 등급이 실시간으로 상향 조정될 수 있습니다.
+                      </p>
+                   </div>
                 </div>
                 <div className="flex gap-4 pt-6">
                   <button onClick={() => setStep(1)} className="flex-1 py-5.5 bg-hannam-bg text-hannam-muted rounded-[24px] text-[12px] font-bold uppercase tracking-widest border border-hannam-border">이전 단계</button>
@@ -215,7 +221,7 @@ export const ContractCreator: React.FC = () => {
                 <div className="h-full bg-white rounded-3xl shadow-2xl p-16 space-y-12 overflow-y-auto no-scrollbar relative border border-hannam-border">
                    <div className="text-center border-b border-hannam-border pb-12">
                       <h2 className="text-3xl font-serif font-bold uppercase text-hannam-green tracking-widest">Membership Agreement</h2>
-                      <p className="text-[11px] font-black text-hannam-gold mt-3 tracking-[0.3em]">더 한남 공식 전자 계약 증명서</p>
+                      <p className="text-[11px] font-black text-hannam-gold mt-3 tracking-[0.3em]">더 한남 공식 전자 멤버십 체결 증명서</p>
                    </div>
                    <div className="grid grid-cols-2 gap-12">
                       <div className="space-y-8">
@@ -223,15 +229,15 @@ export const ContractCreator: React.FC = () => {
                          <div><p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">연락처</p><p className="text-[16px] font-bold text-hannam-text num-data">{formData.memberPhone}</p></div>
                       </div>
                       <div className="text-right space-y-8">
-                         <div><p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">멤버십 프로그램</p><p className="text-[16px] font-black text-hannam-gold">{formData.typeName}</p></div>
-                         <div><p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">계약 총액</p><p className="text-[24px] font-black text-hannam-green num-data">₩ {formData.amount.toLocaleString()}</p></div>
+                         <div><p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">프로그램명</p><p className="text-[16px] font-black text-hannam-gold">{formData.typeName}</p></div>
+                         <div><p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">충전 합계액</p><p className="text-[24px] font-black text-hannam-green num-data">₩ {formData.amount.toLocaleString()}</p></div>
                       </div>
                    </div>
                    <div className="pt-12 border-t border-hannam-bg space-y-6">
                       <p className="text-[13px] text-hannam-text leading-relaxed font-medium">
-                         1. 본 계약은 체결 즉시 효력이 발생하며, 납부된 금액은 회원님의 멤버십 크레딧으로 즉시 적립됩니다.<br/>
-                         2. 서비스 이용 시 회원 등급에 따른 차감 정책 및 취소 규정이 적용됩니다.<br/>
-                         3. 환불 시에는 기 사용분 및 서비스 수수료를 제외한 금액이 반환됩니다.
+                         1. 본 계약은 서명 즉시 효력이 발생하며, 기재된 금액은 회원님의 멤버십 크레딧으로 즉시 통합됩니다.<br/>
+                         2. 충전된 크레딧은 더 한남의 전 서비스를 이용하는 데 사용되며, 등급별 차감 혜택이 적용됩니다.<br/>
+                         3. 전자 계약 정보는 시스템에 아카이빙되어 향후 멤버십 갱신 및 이력 대조의 기준이 됩니다.
                       </p>
                    </div>
                    <div className="absolute top-0 right-0 p-10 opacity-[0.03] pointer-events-none">
@@ -241,11 +247,12 @@ export const ContractCreator: React.FC = () => {
              </div>
              <div className="col-span-4 space-y-8 flex flex-col">
                 <div className="bg-white p-10 rounded-[40px] border border-hannam-border shadow-hannam-soft space-y-8">
-                   <h3 className="text-[12px] font-black uppercase text-hannam-gold tracking-widest">최종 확인 사항</h3>
+                   <h3 className="text-[12px] font-black uppercase text-hannam-gold tracking-widest">최종 확인 및 자산 반영 동의</h3>
                    <div className="space-y-5">
                       {[
-                        { key: 'confirmed', label: '기재된 계약 정보가 정확함' },
-                        { key: 'termsRead', label: '이용 약관 및 취소 정책 고지함' }
+                        { key: 'confirmed', label: '충전 금액 및 대상자 확인 완료' },
+                        { key: 'termsRead', label: '이용 약관 고지 및 회원 동의 수령' },
+                        { key: 'balanceUpdateAgreement', label: '체결 즉시 회원의 실제 잔액을 갱신함' }
                       ].map((item) => (
                         <div key={item.key} className="flex items-center gap-4 cursor-pointer group" onClick={() => setCheckList(p => ({...p, [item.key]: !p[item.key] as any}))}>
                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${checkList[item.key as keyof typeof checkList] ? 'bg-hannam-green border-hannam-green' : 'border-hannam-border'}`}>
@@ -257,39 +264,43 @@ export const ContractCreator: React.FC = () => {
                    </div>
                 </div>
                 <div className="bg-white p-8 rounded-[40px] border border-hannam-border shadow-hannam-soft h-72 flex flex-col">
-                   <p className="text-[10px] font-black text-hannam-gold uppercase tracking-widest mb-4 ml-2">관리자 승인 서명</p>
+                   <p className="text-[10px] font-black text-hannam-gold uppercase tracking-widest mb-4 ml-2">관리자 승인 인장</p>
                    <div className="flex-1"><SignaturePad onSave={url => setFormData({...formData, signature: url})} onClear={() => setFormData({...formData, signature: ''})} /></div>
                 </div>
                 <button 
                   onClick={handleFinalSubmit} 
-                  disabled={!formData.signature || !checkList.confirmed || !checkList.termsRead || isProcessing} 
+                  disabled={!formData.signature || !checkList.confirmed || !checkList.termsRead || !checkList.balanceUpdateAgreement || isProcessing} 
                   className="w-full py-7 bg-hannam-green text-white rounded-[32px] text-[14px] font-black uppercase tracking-widest shadow-hannam-deep disabled:opacity-10 hover:bg-black transition-all active:scale-95"
                 >
-                  {isProcessing ? '처리 중...' : '계약 확정 및 전송'}
+                  {isProcessing ? '금융 트랜잭션 처리 중...' : '계약 확정 및 멤버십 활성화'}
                 </button>
              </div>
           </div>
         )}
 
-        {step === 4 && finalContract && (
+        {step === 4 && finalContract && updatedMember && (
            <div className="w-full max-w-2xl space-y-12 animate-in zoom-in-95 duration-500 flex flex-col items-center">
               <div className="w-24 h-24 bg-green-50 rounded-full flex items-center justify-center border border-green-100 shadow-inner">
-                <CheckCircle2 className="w-12 h-12 text-green-500" />
+                <TrendingUp className="w-12 h-12 text-green-500" />
               </div>
               <div className="text-center">
-                 <h2 className="text-3xl font-serif font-bold text-hannam-green uppercase tracking-tight">Contract Authorized</h2>
-                 <p className="text-hannam-muted font-bold mt-3 text-[14px]">계약이 성공적으로 체결되었습니다. 회원 잔액 충전 및 이메일 전송 완료.</p>
+                 <h2 className="text-3xl font-serif font-bold text-hannam-green uppercase tracking-tight">Financial Sync Complete</h2>
+                 <p className="text-hannam-muted font-bold mt-3 text-[14px]">계약 체결 및 멤버십 자산 반영이 성공적으로 완료되었습니다.</p>
               </div>
               <div className="w-full bg-white p-12 rounded-[56px] border border-hannam-border shadow-hannam-deep space-y-10">
-                 <div className="flex justify-between items-center pb-10 border-b border-hannam-bg">
-                    <div>
-                       <p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">체결 대상 회원</p>
-                       <p className="text-xl font-black text-hannam-text">{finalContract.memberName} 님</p>
+                 <div className="grid grid-cols-2 gap-8 pb-10 border-b border-hannam-bg">
+                    <div className="p-6 bg-hannam-bg/50 rounded-3xl">
+                       <p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-2">충전 후 최종 잔액</p>
+                       <p className="text-2xl font-black text-hannam-green num-data">₩ {updatedMember.remaining.toLocaleString()}</p>
                     </div>
-                    <div className="text-right">
-                       <p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-1.5">최종 결제 금액</p>
-                       <p className="text-3xl font-black text-hannam-gold num-data">₩ {finalContract.amount.toLocaleString()}</p>
+                    <div className="p-6 bg-hannam-bg/50 rounded-3xl">
+                       <p className="text-[10px] font-black text-hannam-muted uppercase tracking-widest mb-2">현재 멤버십 등급</p>
+                       <p className="text-2xl font-black text-hannam-gold uppercase tracking-widest">{updatedMember.tier}</p>
                     </div>
+                 </div>
+                 <div className="flex justify-between items-center px-4">
+                    <span className="text-[11px] font-black text-hannam-muted uppercase tracking-widest">전자 계약서 고유 번호</span>
+                    <span className="text-[11px] font-mono font-bold text-gray-300">{finalContract.id}</span>
                  </div>
                  <button onClick={() => navigate('/admin/contracts')} className="w-full py-6 bg-hannam-bg text-hannam-muted rounded-[24px] text-[13px] font-black uppercase tracking-widest border border-hannam-border hover:text-hannam-text transition-all">계약서 보관함으로 이동</button>
               </div>
